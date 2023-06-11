@@ -1,9 +1,13 @@
-name: GitHub Actions Demo
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+name: Deploy to PyPi
+
 on:
   push:
       branches:
         - development
+
+env:
+      PYPI_ACCESS_TOKEN: ${{ secrets.PYPI_ACCESS_TOKEN }}
+
 jobs:
   Explore-GitHub-Actions:
     runs-on: ubuntu-latest
@@ -21,4 +25,4 @@ jobs:
         run: python3 setup.py sdist
 
       - name: Uploading to PyPi
-        run: twine upload -u __token__ -p ${{ secrets.PYPI_ACCESS_TOKEN }} dist\*
+        run: twine upload -u __token__ -p $PYPI_ACCESS_TOKEN dist\*
