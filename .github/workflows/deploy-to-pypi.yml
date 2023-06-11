@@ -19,6 +19,9 @@ jobs:
       - name: Installing Dependencies
         run: python3 -m pip install -r requirements-dev.txt
 
+      - name: Running MyPy check
+        run: mypy --install-types --non-interactive && mypy .
+
       - name: Packaging the SDK
         run: python3 setup.py sdist
 
