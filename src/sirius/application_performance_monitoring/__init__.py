@@ -19,7 +19,7 @@ class MessageLevel(Enum):
 rollbar.init(
     access_token=os.getenv("ROLLBAR_ACCESS_TOKEN"),
     environment=common.get_environment().value,
-    capture_ip=True,
+    capture_ip=True
 )
 
 
@@ -38,15 +38,5 @@ def monitored(func: Callable) -> Callable:
         except Exception as e:
             report_exception()
             raise Exception(e)  # NOSONAR
-
-    return wrapper
-
-
-def threaded(func: Callable) -> Callable:
-    def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
-        thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-        thread.start()
-        # logger.debug(f"Thread started for function: {os.path.abspath(inspect.getfile(func))} | {func.__name__}")
-        return thread
 
     return wrapper

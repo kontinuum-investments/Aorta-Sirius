@@ -1,5 +1,7 @@
 import os
+import threading
 from enum import Enum
+from typing import Callable, Any
 
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
@@ -25,3 +27,12 @@ def get_environment() -> Environment:
         return Environment.Development if environment is None else Environment(environment)
     except ValueError:
         raise ApplicationException(f"Invalid environment variable setup: {environment}")
+
+
+def threaded(func: Callable) -> Callable:
+    def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
+        thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+        thread.start()
+        return thread
+
+    return wrapper
