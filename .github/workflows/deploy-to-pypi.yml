@@ -10,24 +10,24 @@ jobs:
   Deploy-to-PyPi:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository code
-        uses: actions/checkout@v3
-
-      - name: Installing Python
-        run: sudo apt update && sudo apt install python3
-
-      - name: Installing Dependencies
-        run: python3 -m pip install -r requirements-dev.txt
-
-      - name: Running MyPy check
-        run: mypy . --install-types --non-interactive
+#      - name: Check out repository code
+#        uses: actions/checkout@v3
+#
+#      - name: Installing Python
+#        run: sudo apt update && sudo apt install python3
+#
+#      - name: Installing Dependencies
+#        run: python3 -m pip install -r requirements-dev.txt
+#
+#      - name: Running MyPy check
+#        run: mypy . --install-types --non-interactive
 
       - name: Packaging the SDK
         env:
           ENVIRONMENT: ${{ env.GITHUB_BASE_REF }}
-        run: python3 setup.py sdist
+        run: echo $ENVIRONMENT
 
-      - name: Uploading to PyPi
-        env:
-          PYPI_ACCESS_TOKEN: ${{ secrets.PYPI_ACCESS_TOKEN }}
-        run: twine upload -u __token__ -p $PYPI_ACCESS_TOKEN dist/*
+#      - name: Uploading to PyPi
+#        env:
+#          PYPI_ACCESS_TOKEN: ${{ secrets.PYPI_ACCESS_TOKEN }}
+#        run: twine upload -u __token__ -p $PYPI_ACCESS_TOKEN dist/*
