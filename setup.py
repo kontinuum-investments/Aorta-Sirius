@@ -29,5 +29,7 @@ setup(
     author_email="kavindu@kih.com.sg",
     packages=find_packages(where="src", include=["sirius*"]),
     package_dir={"": "src"},
-    install_requires=[]
+    install_requires=[
+        "rollbar"
+    ]
 )
