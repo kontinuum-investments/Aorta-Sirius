@@ -1,0 +1,21 @@
+name: GitHub Actions Demo
+run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+on: [push]
+jobs:
+  Explore-GitHub-Actions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Installing Python
+        run: sudo apt update && sudo apt install python3
+
+      - name: Installing Dependencies
+        run: python3 -m pip install -r requirements-dev.txt
+
+      - name: Packaging the SDK
+        run: python3 setup.py sdist
+
+      - name: Uploading to PyPi
+        run: twine upload -u __token__ -p ${{ secrets.PYPI_ACCESS_TOKEN }} dist\*
