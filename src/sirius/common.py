@@ -22,7 +22,7 @@ def get_environmental_variable(key: str) -> str:
 
 
 def get_environment() -> Environment:
-    environment: str = os.getenv(EnvironmentVariable.ENVIRONMENT)
+    environment: str = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
     try:
         return Environment.Development if environment is None else Environment(environment)
     except ValueError:
