@@ -25,7 +25,7 @@ jobs:
       - name: Packaging the SDK
         env:
           ENVIRONMENT: ${{ env.GITHUB_BASE_REF }}
-        run: echo $ENVIRONMENT
+        run: echo "Variable is here ${{ env.GITHUB_BASE_REF }}"
 
 #      - name: Uploading to PyPi
 #        env:
