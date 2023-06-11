@@ -23,7 +23,7 @@ jobs:
         run: mypy . --install-types --non-interactive
 
       - name: Packaging the SDK
-        with:
+        env:
           ENVIRONMENT: ${{ env.GITHUB_BASE_REF }}
         run: python3 setup.py sdist
 
