@@ -18,7 +18,7 @@ def get_next_version() -> str:
 
 
 def is_production_branch() -> bool:
-    return "production" == os.getenv("GITHUB_BASE_REF")
+    return "production" == os.getenv("ENVIRONMENT")
 
 
 setup(
