@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 import requests
 from requests import Response
@@ -21,6 +22,11 @@ def is_production_branch() -> bool:
     return "production" == os.getenv("GITHUB_REF_NAME")
 
 
+def get_required_packages() -> List[str]:
+    with open("requirements.txt", "r") as requirements_file:
+        return requirements_file.read().split("\n")
+
+
 setup(
     name=get_package_name(),
     version=get_next_version(),
@@ -29,7 +35,5 @@ setup(
     author_email="kavindu@kih.com.sg",
     packages=find_packages(where="src", include=["sirius*"]),
     package_dir={"": "src"},
-    install_requires=[
-        "rollbar"
-    ]
+    install_requires=get_required_packages()
 )
