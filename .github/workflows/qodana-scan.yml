@@ -1,10 +1,13 @@
 name: 'Qodana Scan'
+
 on:
   push:
       branches:
         - production
         - development
 
-uses: JetBrains/qodana-action@main
-env:
-  QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+jobs:
+  Qodana-Scan:
+    uses: JetBrains/qodana-action@main
+    env:
+      QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
