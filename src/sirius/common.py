@@ -13,10 +13,10 @@ class Environment(Enum):
     Development: str = "Development"
 
 
-def get_environmental_variable(key: str) -> str:
-    value: str = os.getenv(key)
+def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:
+    value: str = os.getenv(environmental_variable.value)
     if value is None:
-        raise ApplicationException(f"Environment variable with the key is not available: {key}")
+        raise ApplicationException(f"Environment variable with the key is not available: {environmental_variable.value}")
 
     return value
 

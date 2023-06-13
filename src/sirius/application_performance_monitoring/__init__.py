@@ -1,42 +1,46 @@
-import os
-import threading
-from enum import Enum
-from typing import Callable, Any
+import inspect
+import logging
+from typing import Callable, Any, List, Dict
 
-import rollbar
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from sirius import common
+from sirius.constants import EnvironmentVariable
 
+logging.basicConfig(level=logging.DEBUG, format="%(asctime)s || %(levelname)s || %(module)s.%(funcName)s\n%(message)s\n")
 
-class MessageLevel(Enum):
-    INFO: str = "info"
-    DEBUG: str = "debug"
-    WARNING: str = "warning"
-    ERROR: str = "error"
-    CRITICAL: str = "critical"
-
-
-rollbar.init(
-    access_token=os.getenv("ROLLBAR_ACCESS_TOKEN"),
+sentry_sdk.init(
+    dsn=common.get_environmental_variable(EnvironmentVariable.SENTRY_URL),
+    traces_sample_rate=1.0,
+    profiles_sample_rate=1.0,
     environment=common.get_environment().value,
-    capture_ip=True
+    integrations=[
+        LoggingIntegration(
+            level=logging.DEBUG,
+            event_level=logging.ERROR
+        ),
+    ],
 )
 
 
-def send_message(message: str, level: MessageLevel) -> None:
-    rollbar.report_message(message, level.value)
+def transaction(transaction_name: str, operation_name: str) -> Callable:
+    def decorator(function: Callable) -> Callable:
+        def wrapper(*args: List[Any], **kwargs: Dict[str, Any]) -> Any:
+            with sentry_sdk.start_transaction(op=operation_name, name=transaction_name):
+                result: Any = function(*args, **kwargs)
+            return result
+
+        return wrapper
+
+    return decorator
 
 
-def report_exception() -> None:
-    rollbar.report_exc_info()
+def get_logger() -> logging.Logger:
+    return logging.getLogger(get_name_of_calling_module())
 
 
-def monitored(func: Callable) -> Callable:
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        try:
-            func(*args, **kwargs)
-        except Exception as e:
-            report_exception()
-            raise Exception(e)  # NOSONAR
-
-    return wrapper
+def get_name_of_calling_module() -> str:
+    file_path: str = inspect.getmodule(inspect.stack()[2][0]).__file__
+    file_name: str = file_path.split("\\")[-1] if "\\" in file_path else file_path.split("/")[-1]
+    return file_name.replace(".py", "")
