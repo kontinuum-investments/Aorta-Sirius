@@ -1,2 +1,4 @@
 rollbar
 sentry-sdk
+motor
+pymongo

@@ -1,7 +1,5 @@
 class SiriusException(Exception):
-
-    def __init__(self, message: str) -> None:
-        print(message)
+    pass
 
 
 class ApplicationException(SiriusException):
