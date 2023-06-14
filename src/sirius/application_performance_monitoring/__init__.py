@@ -6,6 +6,7 @@ import sentry_sdk
 from sentry_sdk.integrations.logging import LoggingIntegration
 
 from sirius import common
+from sirius.application_performance_monitoring.constants import Operation
 from sirius.constants import EnvironmentVariable
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s || %(levelname)s || %(module)s.%(funcName)s\n%(message)s\n")
@@ -24,10 +25,10 @@ sentry_sdk.init(
 )
 
 
-def transaction(transaction_name: str, operation_name: str) -> Callable:
+def transaction(operation: Operation, transaction_name: str) -> Callable:
     def decorator(function: Callable) -> Callable:
         def wrapper(*args: List[Any], **kwargs: Dict[str, Any]) -> Any:
-            with sentry_sdk.start_transaction(op=operation_name, name=transaction_name):
+            with sentry_sdk.start_transaction(op=operation.value, name=transaction_name):
                 result: Any = function(*args, **kwargs)
             return result
 

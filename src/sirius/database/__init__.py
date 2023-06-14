@@ -6,6 +6,7 @@ import bson
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
 
 from sirius import common, application_performance_monitoring
+from sirius.application_performance_monitoring import Operation
 from sirius.constants import EnvironmentVariable
 from sirius.database.exceptions import DatabaseException, NonUniqueResultException
 
@@ -14,6 +15,7 @@ database: AsyncIOMotorDatabase = None
 logger: Logger = application_performance_monitoring.get_logger()
 
 
+@application_performance_monitoring.transaction(Operation.DATABASE, "Connect to the Database")
 def connect_to_database() -> None:
     global client, database
     if client is not None:
@@ -55,6 +57,7 @@ class DatabaseDocument:
         database_document._id = id_object
         return database_document
 
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Save")
     async def save(self) -> "DatabaseDocument":
         if self._id is None:
             return await self.get_collection().insert_one(self.get_dict())
@@ -62,10 +65,12 @@ class DatabaseDocument:
             return await self.get_collection().replace_one({"_id": self._id}, self.get_dict(is_remove_id=True))
 
     @classmethod
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Save Many")
     async def save_many(cls, database_document_list: List["DatabaseDocument"]) -> List["DatabaseDocument"]:
         return [await database_document.save() for database_document in database_document_list]
 
     @classmethod
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Find One")
     async def find_one(cls, search_criteria: Dict[Any, Any]) -> Optional["DatabaseDocument"]:
         results_list: List[DatabaseDocument] = await cls.find_many(search_criteria)
 
@@ -77,6 +82,7 @@ class DatabaseDocument:
             raise NonUniqueResultException(f"More than a single result found for a query expecting a single result:\nCollection:{cls.get_collection().name}\nSearch Criteria: {str(search_criteria)}")
 
     @classmethod
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Find Many")
     async def find_many(cls, search_criteria: Dict[Any, Any]) -> List["DatabaseDocument"]:
         results_list: List[DatabaseDocument] = []
         collection: AsyncIOMotorCollection = cls.get_collection()
@@ -86,6 +92,7 @@ class DatabaseDocument:
 
         return results_list
 
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Delete")
     async def delete(self) -> None:
         collection: AsyncIOMotorCollection = self.get_collection()
         if self._id is None:
