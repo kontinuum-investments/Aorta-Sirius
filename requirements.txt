@@ -1,3 +1,4 @@
 sentry-sdk
 motor
 beanie
+httpx
