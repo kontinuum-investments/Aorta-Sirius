@@ -3,7 +3,7 @@ from logging import Logger
 from typing import Optional, Dict, Any, List, Callable
 
 import beanie.odm.fields
-from beanie import Document, Indexed, init_beanie
+from beanie import Document, init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from sirius import common, application_performance_monitoring
