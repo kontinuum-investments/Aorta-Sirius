@@ -1,104 +1,99 @@
-from dataclasses import dataclass
+import functools
 from logging import Logger
-from typing import List, Dict, Any, Optional
+from typing import Optional, Dict, Any, List, Callable
 
-import bson
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
+import beanie.odm.fields
+from beanie import Document, Indexed, init_beanie
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from sirius import common, application_performance_monitoring
 from sirius.application_performance_monitoring import Operation
 from sirius.constants import EnvironmentVariable
-from sirius.database.exceptions import DatabaseException, NonUniqueResultException
+from sirius.database.exceptions import DatabaseException, NonUniqueResultException, UncommittedRelationalDocumentException
 
 client: AsyncIOMotorClient = None
-database: AsyncIOMotorDatabase = None
+database_name: str = common.get_environmental_variable(EnvironmentVariable.DATABASE_NAME)
 logger: Logger = application_performance_monitoring.get_logger()
 
 
-@application_performance_monitoring.transaction(Operation.DATABASE, "Connect to the Database")
-def connect_to_database() -> None:
-    global client, database
+@application_performance_monitoring.transaction(Operation.DATABASE, f"Connect to the {database_name} Database")
+async def initialize() -> None:
+    global client, database_name
     if client is not None:
         return
 
-    try:
-        client = AsyncIOMotorClient(common.get_environmental_variable(EnvironmentVariable.MONGO_DB_CONNECTION_STRING))
-        client.admin.command("ping")
-        logger.debug("Successfully connected to the database")
-    except Exception as e:
-        raise DatabaseException("Unable to connect to the database", e)
-
-    database = client[common.get_environmental_variable(EnvironmentVariable.DATABASE_NAME)]
+    client = AsyncIOMotorClient(common.get_environmental_variable(EnvironmentVariable.MONGO_DB_CONNECTION_STRING))
+    await init_beanie(database=client[database_name], document_models=DatabaseDocument.__subclasses__())
 
 
-@dataclass
-class DatabaseDocument:
-    _id: Optional[bson.ObjectId] = None
+def transaction(transaction_name: Optional[str] = None) -> Callable:
+    def decorator(function: Callable) -> Callable:
 
-    @classmethod
-    def get_collection(cls) -> AsyncIOMotorCollection:
-        return database[cls.__name__]
+        @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, transaction_name)
+        @functools.wraps(function)
+        async def wrapper(*args: List[Any], **kwargs: Dict[str, Any]) -> Any:
+            await initialize()
+            return await function(*args, **kwargs)
 
-    def get_dict(self, is_remove_id: bool = False) -> Dict[Any, Any]:
-        return_dict: Dict[Any, Any] = self.__dict__
+        return wrapper
 
-        if "collection" in return_dict.keys():
-            return_dict.pop("collection")
+    return decorator
 
-        if is_remove_id or ("_id" in return_dict.keys() and return_dict.get("_id") is None):
-            return_dict.pop("_id")
 
-        return return_dict
+class DatabaseDocument(Document):
+    id: Optional[beanie.PydanticObjectId] = None
 
-    @classmethod
-    def _get_database_document_from_dict(cls, data_dict: Dict[Any, Any], clazz: type) -> "DatabaseDocument":
-        id_object: bson.ObjectId = data_dict.pop("_id")
-        database_document = clazz(**data_dict)
-        database_document._id = id_object
-        return database_document
+    class Settings:
+        validate_on_save = True
+        use_state_management = True
+        state_management_save_previous = True
+
+    def __init__(self, *args: List[Any], **kwargs: Dict[Any, Any]) -> None:
+        for key, value in kwargs.items():
+            if isinstance(value, DatabaseDocument):
+                if value.id is None:
+                    raise UncommittedRelationalDocumentException(f"Uncommitted document is trying to be related\nUncommitted Object: {str(object)}\nObject being related: {str(self)}")
+                kwargs[key] = value.id  # type: ignore[assignment]
+
+        super().__init__(*args, **kwargs)  # type: ignore[no-untyped-call]
 
     @application_performance_monitoring.transaction(Operation.DATABASE, "Save")
-    async def save(self) -> "DatabaseDocument":
-        if self._id is None:
-            return await self.get_collection().insert_one(self.get_dict())
+    async def commit(self) -> "DatabaseDocument":
+        if self.id is None:
+            return await super().save(link_rule=beanie.WriteRules.WRITE)
         else:
-            return await self.get_collection().replace_one({"_id": self._id}, self.get_dict(is_remove_id=True))
+            return await super().save_changes()
+
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Delete")
+    async def remove(self) -> None:
+        return await super().delete()
 
     @classmethod
-    @application_performance_monitoring.transaction(Operation.DATABASE, "Save Many")
-    async def save_many(cls, database_document_list: List["DatabaseDocument"]) -> List["DatabaseDocument"]:
-        return [await database_document.save() for database_document in database_document_list]
-
-    @classmethod
-    @application_performance_monitoring.transaction(Operation.DATABASE, "Find One")
-    async def find_one(cls, search_criteria: Dict[Any, Any]) -> Optional["DatabaseDocument"]:
-        results_list: List[DatabaseDocument] = await cls.find_many(search_criteria)
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Find Single")
+    async def find_unique(cls, *args: List[Any], fetch_links: bool = False) -> Optional["DatabaseDocument"]:
+        results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()  # type: ignore[call-overload]
 
         if len(results_list) == 0:
             return None
         elif len(results_list) == 1:
-            return results_list[0]
+            result: DatabaseDocument = results_list[0]
         else:
-            raise NonUniqueResultException(f"More than a single result found for a query expecting a single result:\nCollection:{cls.get_collection().name}\nSearch Criteria: {str(search_criteria)}")
+            raise NonUniqueResultException(f"Non-unique result found\nCollection: {cls.__name__}\nSearch Criteria: {str(*args)}")
+
+        if fetch_links:
+            await result.fetch_all_links()  # type: ignore[no-untyped-call]
+        return result
 
     @classmethod
-    @application_performance_monitoring.transaction(Operation.DATABASE, "Find Many")
-    async def find_many(cls, search_criteria: Dict[Any, Any]) -> List["DatabaseDocument"]:
-        results_list: List[DatabaseDocument] = []
-        collection: AsyncIOMotorCollection = cls.get_collection()
-
-        for document in await collection.find(search_criteria).to_list(length=1000):
-            results_list.append(cls._get_database_document_from_dict(document, cls))
-
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Find Multiple")
+    async def find_multiple(cls, search_criteria: Dict[Any, Any], fetch_links: bool = False) -> List["DatabaseDocument"]:
+        results_list: List[DatabaseDocument] = await super().find_many(search_criteria).to_list()
+        if fetch_links:
+            for result in results_list:
+                await result.fetch_all_links()  # type: ignore[no-untyped-call]
         return results_list
 
-    @application_performance_monitoring.transaction(Operation.DATABASE, "Delete")
-    async def delete(self) -> None:
-        collection: AsyncIOMotorCollection = self.get_collection()
-        if self._id is None:
-            raise DatabaseException(f"Unsaved data cannot be saved in the database: {str(self)}")
-
-        await collection.delete_one({"_id": self._id})
-
-
-connect_to_database()
+    @staticmethod
+    @application_performance_monitoring.transaction(Operation.DATABASE, "Save All")
+    async def commit_all(database_document_list: List["DatabaseDocument"]) -> List["DatabaseDocument"]:
+        return [await database_document.commit() for database_document in database_document_list]

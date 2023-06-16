@@ -7,3 +7,7 @@ class DatabaseException(SiriusException):
 
 class NonUniqueResultException(DatabaseException):
     pass
+
+
+class UncommittedRelationalDocumentException(DatabaseException):
+    pass
