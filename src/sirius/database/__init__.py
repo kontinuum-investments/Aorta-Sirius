@@ -53,9 +53,9 @@ class DatabaseDocument(Document):
             if isinstance(value, DatabaseDocument):
                 if value.id is None:
                     raise UncommittedRelationalDocumentException(f"Uncommitted document is trying to be related\nUncommitted Object: {str(object)}\nObject being related: {str(self)}")
-                kwargs[key] = value.id  # type: ignore[assignment]
+                kwargs[key] = value.id
 
-        super().__init__(*args, **kwargs)  # type: ignore[no-untyped-call]
+        super().__init__(*args, **kwargs)
 
     @application_performance_monitoring.transaction(Operation.DATABASE, "Save")
     async def commit(self) -> "DatabaseDocument":
@@ -71,7 +71,7 @@ class DatabaseDocument(Document):
     @classmethod
     @application_performance_monitoring.transaction(Operation.DATABASE, "Find Single")
     async def find_unique(cls, *args: List[Any], fetch_links: bool = False) -> Optional["DatabaseDocument"]:
-        results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()  # type: ignore[call-overload]
+        results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()
 
         if len(results_list) == 1:
             result: DatabaseDocument = results_list[0]
@@ -81,7 +81,7 @@ class DatabaseDocument(Document):
             raise NonUniqueResultException(f"Non-unique result found\nCollection: {cls.__name__}\nSearch Criteria: {str(*args)}")
 
         if fetch_links:
-            await result.fetch_all_links()  # type: ignore[no-untyped-call]
+            await result.fetch_all_links()
         return result
 
     @classmethod
@@ -90,7 +90,7 @@ class DatabaseDocument(Document):
         results_list: List[DatabaseDocument] = await super().find_many(search_criteria).to_list()
         if fetch_links:
             for result in results_list:
-                await result.fetch_all_links()  # type: ignore[no-untyped-call]
+                await result.fetch_all_links()
         return results_list
 
     @staticmethod

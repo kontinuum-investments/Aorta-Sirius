@@ -27,7 +27,7 @@ async def send_message(channel_name: str, message: str) -> None:
     await client.start(common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN), reconnect=True)
 
 
-async def _get_server() -> Guild:  # type: ignore[return]
+async def _get_server() -> Guild:
     global client
     server_name: str = common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_NAME)
     if not common.is_production_environment():
