@@ -28,7 +28,6 @@ async def initialize() -> None:
 
 def transaction(transaction_name: Optional[str] = None) -> Callable:
     def decorator(function: Callable) -> Callable:
-
         @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, transaction_name)
         @functools.wraps(function)
         async def wrapper(*args: List[Any], **kwargs: Dict[str, Any]) -> Any:
@@ -53,9 +52,9 @@ class DatabaseDocument(Document):
             if isinstance(value, DatabaseDocument):
                 if value.id is None:
                     raise UncommittedRelationalDocumentException(f"Uncommitted document is trying to be related\nUncommitted Object: {str(object)}\nObject being related: {str(self)}")
-                kwargs[key] = value.id
+                kwargs[key] = value.id  # type: ignore[assignment]
 
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)  # type: ignore[no-untyped-call]
 
     @application_performance_monitoring.transaction(Operation.DATABASE, "Save")
     async def commit(self) -> "DatabaseDocument":
@@ -71,7 +70,7 @@ class DatabaseDocument(Document):
     @classmethod
     @application_performance_monitoring.transaction(Operation.DATABASE, "Find Single")
     async def find_unique(cls, *args: List[Any], fetch_links: bool = False) -> Optional["DatabaseDocument"]:
-        results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()
+        results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()  # type: ignore[call-overload]
 
         if len(results_list) == 1:
             result: DatabaseDocument = results_list[0]
@@ -81,7 +80,7 @@ class DatabaseDocument(Document):
             raise NonUniqueResultException(f"Non-unique result found\nCollection: {cls.__name__}\nSearch Criteria: {str(*args)}")
 
         if fetch_links:
-            await result.fetch_all_links()
+            await result.fetch_all_links()  # type: ignore[no-untyped-call]
         return result
 
     @classmethod
@@ -90,7 +89,7 @@ class DatabaseDocument(Document):
         results_list: List[DatabaseDocument] = await super().find_many(search_criteria).to_list()
         if fetch_links:
             for result in results_list:
-                await result.fetch_all_links()
+                await result.fetch_all_links()  # type: ignore[no-untyped-call]
         return results_list
 
     @staticmethod
