@@ -35,6 +35,9 @@ class HTTPResponse:
 
 class HTTPRequest:
 
+    def __init__(self) -> None:
+        pass
+
     @staticmethod
     def raise_http_exception(http_response: HTTPResponse) -> None:
         error_message: str = f"HTTP Exception\n" \

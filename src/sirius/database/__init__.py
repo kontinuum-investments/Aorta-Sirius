@@ -47,6 +47,9 @@ class DatabaseDocument(Document):
         use_state_management = True
         state_management_save_previous = True
 
+        def __init__(self) -> None:
+            pass
+
     def __init__(self, *args: List[Any], **kwargs: Dict[Any, Any]) -> None:
         for key, value in kwargs.items():
             if isinstance(value, DatabaseDocument):
