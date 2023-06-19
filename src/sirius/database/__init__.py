@@ -73,10 +73,10 @@ class DatabaseDocument(Document):
     async def find_unique(cls, *args: List[Any], fetch_links: bool = False) -> Optional["DatabaseDocument"]:
         results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()  # type: ignore[call-overload]
 
-        if len(results_list) == 0:
-            return None
-        elif len(results_list) == 1:
+        if len(results_list) == 1:
             result: DatabaseDocument = results_list[0]
+        elif len(results_list) == 0:
+            return None
         else:
             raise NonUniqueResultException(f"Non-unique result found\nCollection: {cls.__name__}\nSearch Criteria: {str(*args)}")
 

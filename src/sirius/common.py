@@ -29,6 +29,18 @@ def get_environment() -> Environment:
         raise ApplicationException(f"Invalid environment variable setup: {environment}")
 
 
+def is_production_environment() -> bool:
+    return Environment.Production == get_environment()
+
+
+def is_staging_environment() -> bool:
+    return Environment.Staging == get_environment()
+
+
+def is_development_environment() -> bool:
+    return Environment.Development == get_environment()
+
+
 def threaded(func: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
         thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
