@@ -2,4 +2,3 @@ sentry-sdk
 motor
 beanie
 httpx
-discord.py

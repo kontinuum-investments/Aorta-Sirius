@@ -1,60 +1,157 @@
+from abc import abstractmethod
+from enum import Enum
 from logging import Logger
-from typing import Optional, List
+from typing import List, Optional, Dict, Any
 
-import discord
-from discord import TextChannel, Client, Guild
-
-from sirius import common, application_performance_monitoring
+from sirius import application_performance_monitoring, common
 from sirius.application_performance_monitoring import Operation
-from sirius.communication.discord.exceptions import DuplicateServersFoundException, DuplicateChannelsFoundException, ServerNotFoundException
+from sirius.communication.discord import constants
+from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException
 from sirius.constants import EnvironmentVariable
+from sirius.http_requests import HTTPModel, HTTPRequest
 
-client: Optional[Client] = None
 logger: Logger = application_performance_monitoring.get_logger()
 
 
-@application_performance_monitoring.transaction(Operation.DISCORD, "Send a message")
-async def send_message(channel_name: str, message: str) -> None:
-    global client
-    client = discord.Client(intents=discord.Intents.default())
-
-    @client.event
-    async def on_ready() -> None:
-        channel: TextChannel = await _get_text_channel(channel_name)
-        await channel.send(message)
-        await client.close()
-
-    await client.start(common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN), reconnect=True)
+class ServerName(Enum):
+    VITA: str = "Vita"
+    AURUM: str = "Aurum"
+    AORTA: str = "Aorta"
 
 
-async def _get_server() -> Guild:  # type: ignore[return]
-    global client
-    server_name: str = common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_NAME)
-    if not common.is_production_environment():
-        server_name = server_name + " [Dev]"
+class DiscordHTTPModel(HTTPModel):
+    _headers: Optional[Dict[str, Any]] = {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"}
 
-    guild_list: List[Guild] = list(filter(lambda g: g.name == server_name, client.guilds))
-
-    if len(guild_list) == 1:
-        return guild_list[0]
-    elif len(guild_list) == 0:
-        raise ServerNotFoundException(f"Server not found: {server_name}")
-    elif len(guild_list) > 1:
-        raise DuplicateServersFoundException(f"{len(guild_list)} servers found for the same server name: {server_name}")
+    @abstractmethod
+    def __init__(self, *args: Any, **kwargs: Any):
+        super().__init__(**kwargs)
 
 
-async def _get_text_channel(channel_name: str) -> Optional[TextChannel]:  # type: ignore[return]
-    channel_name = channel_name.lower().replace(" ", "-")
-    guild: Guild = await _get_server()
-    text_channel_list: List[TextChannel] = list(filter(lambda c: c.name == channel_name, guild.text_channels))
+class Bot(DiscordHTTPModel):
+    id: int
+    username: str
 
-    if len(text_channel_list) == 1:
-        return text_channel_list[0]
-    elif len(text_channel_list) == 0:
-        logger.warning(f"Creating a Discord channel\n"
-                       f"Server Name: {guild.name}\n"
-                       f"Channel Name: {channel_name}")
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
 
-        return await guild.create_text_channel(channel_name)
-    elif len(text_channel_list) > 1:
-        raise DuplicateChannelsFoundException(f"{len(text_channel_list)} channels found in the {guild.name} server for the channel name: {channel_name}")
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Bot")
+    async def get(cls) -> "Bot":
+        return await HTTPModel.get_one(cls, constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value, arg-type]
+
+
+class Server(DiscordHTTPModel):
+    id: int
+    name: str
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Server")
+    async def get(cls, bot: Optional[Bot] = None, server: Optional[ServerName] = None) -> "Server":
+        if bot is None:
+            bot = await Bot.get()
+
+        if server is None:
+            server = ServerName(common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_NAME))
+
+        server_name: str = server.value if common.is_production_environment() else server.value + " [Dev]"
+        server_list: List[Server] = list(filter(lambda s: s.name == server_name, await Server.get_all_servers()))
+
+        if len(server_list) == 1:
+            return server_list[0]
+        elif len(server_list) == 0:
+            raise ServerNotFoundException(f"Server not found\n"
+                                          f"Bot Name: {bot.username}\n"
+                                          f"Server Name: {server_name}\n")
+        else:
+            raise DuplicateServersFoundException(f"Duplicate servers found\n"
+                                                 f"Bot Name: {bot.username}\n"
+                                                 f"Server Name: {server_name}\n"
+                                                 f"Number of servers: {len(server_list)}\n")
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Servers")
+    async def get_all_servers(cls) -> List["Server"]:
+        return await HTTPModel.get_multiple(cls, constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value, arg-type]
+
+
+class Channel(DiscordHTTPModel):
+    id: int
+    name: str
+    type: int
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Channels")
+    async def get_all_channels(cls, server: Server) -> List["Channel"]:
+        url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
+        return await HTTPModel.get_multiple(cls, url)  # type: ignore[return-value, arg-type]
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create Channel")
+    async def create(cls, channel_name: str, type_id: int, bot: Optional[Bot] = None, server: Optional[Server] = None) -> "Channel":
+        if bot is None:
+            bot = await Bot.get()
+
+        if server is None:
+            server = await Server.get(bot)
+
+        url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
+        data: Dict[str, Any] = {"name": channel_name, "type": type_id}
+        return await HTTPModel.post_return_one(cls, url, data=data)  # type: ignore[return-value, arg-type]
+
+
+class TextChannel(Channel):
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+    async def send_message(self, message: str) -> None:
+        url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
+        await HTTPRequest().post(url, data={"content": message}, headers=self._headers)
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Text Channel")
+    async def get(cls, text_channel_name: str, bot: Optional[Bot] = None, server: Optional[Server] = None) -> "TextChannel":
+        if bot is None:
+            bot = await Bot.get()
+
+        if server is None:
+            server = await Server.get(bot)
+
+        text_channel_list: List[TextChannel] = list(filter(lambda t: t.name == text_channel_name, await TextChannel.get_all(server)))
+
+        if len(text_channel_list) == 1:
+            return text_channel_list[0]
+        elif len(text_channel_list) == 0:
+            logger.warning("Channel not found; creating channel\n"
+                           f"Bot Name: {bot.username}\n"
+                           f"Server Name: {server.name}\n"
+                           f"Channel Name: {text_channel_name}\n"
+                           )
+            return await TextChannel.create(text_channel_name)
+        else:
+            raise DuplicateServersFoundException(f"Duplicate channels found\n"
+                                                 f"Bot Name: {bot.username}\n"
+                                                 f"Server Name: {server.name}\n"
+                                                 f"Channel Name: {text_channel_name}\n"
+                                                 f"Number of channels: {len(text_channel_list)}\n")
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Text Channels")
+    async def get_all(cls, server: Optional[Server] = None) -> List["TextChannel"]:
+        if server is None:
+            server = await Server.get()
+
+        channel_list: List[Channel] = list(filter(lambda c: c.type == 0, await Channel.get_all_channels(server)))
+        return [TextChannel(**channel.dict()) for channel in channel_list]
+
+    @classmethod
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create a Text Channel")
+    async def create(cls, text_channel_name: str, type_id: int = 0, bot: Optional[Bot] = None, server: Optional[Server] = None) -> "TextChannel":
+        channel: Channel = await Channel.create(text_channel_name, type_id)
+        return TextChannel(**channel.dict())

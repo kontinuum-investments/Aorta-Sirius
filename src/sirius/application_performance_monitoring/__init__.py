@@ -42,6 +42,6 @@ def get_logger() -> logging.Logger:
 
 
 def get_name_of_calling_module() -> str:
-    file_path: str = inspect.getmodule(inspect.stack()[2][0]).__file__
+    file_path: str = inspect.getmodule(inspect.stack()[2][0]).__file__  # type: ignore[union-attr, assignment]
     file_name: str = file_path.split("\\")[-1] if "\\" in file_path else file_path.split("/")[-1]
     return file_name.replace(".py", "")

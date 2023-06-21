@@ -26,7 +26,7 @@ async def initialize() -> None:
     await init_beanie(database=client[database_name], document_models=DatabaseDocument.__subclasses__())
 
 
-def transaction(transaction_name: Optional[str] = None) -> Callable:
+def transaction(transaction_name: str) -> Callable:
     def decorator(function: Callable) -> Callable:
         @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, transaction_name)
         @functools.wraps(function)

@@ -1,8 +1,11 @@
+import json
+from abc import abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
 
 import httpx
 from httpx import Response, Cookies, Headers
+from pydantic import BaseModel
 
 from sirius import application_performance_monitoring
 from sirius.application_performance_monitoring import Operation
@@ -53,7 +56,7 @@ class HTTPRequest:
             raise ServerSideException(error_message)
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "GET")
-    async def get(self, url: str, query_params: Dict[str, Any] = None, headers: Dict[str, Any] = None) -> HTTPResponse:
+    async def get(self, url: str, query_params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
         async with httpx.AsyncClient() as client:
             http_response: HTTPResponse = HTTPResponse(await client.get(url, params=query_params, headers=headers))
             if not http_response.is_successful:
@@ -62,7 +65,7 @@ class HTTPRequest:
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "PUT")
-    async def put(self, url: str, data: Dict[str, Any], headers: Dict[str, Any] = None) -> HTTPResponse:
+    async def put(self, url: str, data: Dict[str, Any], headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
         async with httpx.AsyncClient() as client:
             http_response: HTTPResponse = HTTPResponse(await client.put(url, data=data, headers=headers))
             if not http_response.is_successful:
@@ -71,19 +74,49 @@ class HTTPRequest:
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "POST")
-    async def post(self, url: str, data: Dict[str, Any], headers: Dict[str, Any] = None) -> HTTPResponse:
+    async def post(self, url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+        data_string: Optional[str] = None
+        if headers is not None:
+            headers["content-type"] = "application/json"
+
+        if data is not None:
+            data_string = json.dumps(data)
+
         async with httpx.AsyncClient() as client:
-            http_response: HTTPResponse = HTTPResponse(await client.post(url, data=data, headers=headers))
+            http_response: HTTPResponse = HTTPResponse(await client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
             if not http_response.is_successful:
                 HTTPRequest.raise_http_exception(http_response)
 
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
-    async def delete(self, url: str, headers: Dict[str, Any] = None) -> HTTPResponse:
+    async def delete(self, url: str, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
         async with httpx.AsyncClient() as client:
             http_response: HTTPResponse = HTTPResponse(await client.delete(url, headers=headers))
             if not http_response.is_successful:
                 HTTPRequest.raise_http_exception(http_response)
 
         return http_response
+
+
+class HTTPModel(BaseModel):
+    _headers: Optional[Dict[str, Any]] = None
+
+    @abstractmethod
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+
+    @classmethod
+    async def get_one(cls, clazz: "HTTPModel", url: str, query_params: Optional[Dict[str, Any]] = None) -> "HTTPModel":
+        response: HTTPResponse = await HTTPRequest().get(url=url, query_params=query_params, headers=clazz._headers)
+        return clazz(**response.data)  # type: ignore[operator]
+
+    @classmethod
+    async def get_multiple(cls, clazz: "HTTPModel", url: str, query_params: Optional[Dict[str, Any]] = None) -> List["HTTPModel"]:
+        response: HTTPResponse = await HTTPRequest().get(url=url, query_params=query_params, headers=clazz._headers)
+        return [clazz(**data) for data in response.data]  # type: ignore[operator, union-attr]
+
+    @classmethod
+    async def post_return_one(cls, clazz: "HTTPModel", url: str, data: Optional[Dict[Any, Any]] = None) -> "HTTPModel":
+        response: HTTPResponse = await HTTPRequest().post(url=url, data=data, headers=clazz._headers)
+        return clazz(**response.data)  # type: ignore[operator]

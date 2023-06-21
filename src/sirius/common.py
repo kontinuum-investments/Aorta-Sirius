@@ -1,7 +1,7 @@
 import os
 import threading
 from enum import Enum
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
@@ -14,7 +14,7 @@ class Environment(Enum):
 
 
 def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:
-    value: str = os.getenv(environmental_variable.value)
+    value: Optional[str] = os.getenv(environmental_variable.value)
     if value is None:
         raise ApplicationException(f"Environment variable with the key is not available: {environmental_variable.value}")
 
@@ -22,7 +22,7 @@ def get_environmental_variable(environmental_variable: EnvironmentVariable) -> s
 
 
 def get_environment() -> Environment:
-    environment: str = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
+    environment: Optional[str] = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
     try:
         return Environment.Development if environment is None else Environment(environment)
     except ValueError:
