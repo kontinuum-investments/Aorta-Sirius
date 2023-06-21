@@ -112,7 +112,7 @@ class TextChannel(Channel):
 
     async def send_message(self, message: str) -> None:
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
-        await HTTPRequest().post(url, data={"content": message}, headers=self._headers)
+        await HTTPRequest.post(url, data={"content": message}, headers=self._headers)
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Text Channel")
