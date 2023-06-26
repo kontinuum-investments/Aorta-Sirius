@@ -130,16 +130,16 @@ class HTTPModel(BaseModel):
         super().__init__(**data)
 
     @classmethod
-    async def get_one(cls, clazz: "HTTPModel", url: str, query_params: Optional[Dict[str, Any]] = None) -> "HTTPModel":
-        response: HTTPResponse = await HTTPRequest.get(url=url, query_params=query_params, headers=clazz._headers)
-        return clazz(**response.data)  # type: ignore[operator]
+    async def get_one(cls, url: str, query_params: Optional[Dict[str, Any]] = None) -> "HTTPModel":
+        response: HTTPResponse = await HTTPRequest.get(url=url, query_params=query_params, headers=cls._headers)
+        return cls(**response.data)  # type: ignore[arg-type]
 
     @classmethod
-    async def get_multiple(cls, clazz: "HTTPModel", url: str, query_params: Optional[Dict[str, Any]] = None) -> List["HTTPModel"]:
-        response: HTTPResponse = await HTTPRequest.get(url=url, query_params=query_params, headers=clazz._headers)
-        return [clazz(**data) for data in response.data]  # type: ignore[operator, union-attr]
+    async def get_multiple(cls, url: str, query_params: Optional[Dict[str, Any]] = None) -> List["HTTPModel"]:
+        response: HTTPResponse = await HTTPRequest.get(url=url, query_params=query_params, headers=cls._headers)
+        return [cls(**data) for data in response.data]  # type: ignore[union-attr]
 
     @classmethod
-    async def post_return_one(cls, clazz: "HTTPModel", url: str, data: Optional[Dict[Any, Any]] = None) -> "HTTPModel":
-        response: HTTPResponse = await HTTPRequest.post(url=url, data=data, headers=clazz._headers)
-        return clazz(**response.data)  # type: ignore[operator]
+    async def post_return_one(cls, url: str, data: Optional[Dict[Any, Any]] = None) -> "HTTPModel":
+        response: HTTPResponse = await HTTPRequest.post(url=url, data=data, headers=cls._headers)
+        return cls(**response.data)  # type: ignore[arg-type]

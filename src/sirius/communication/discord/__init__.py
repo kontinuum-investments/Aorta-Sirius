@@ -102,7 +102,7 @@ class Channel(DiscordHTTPModel):
 
         url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
         data: Dict[str, Any] = {"name": channel_name, "type": type_id}
-        return await HTTPModel.post_return_one(cls, url, data=data)  # type: ignore[return-value, arg-type]
+        return await HTTPModel.post_return_one(url, data=data)  # type: ignore[return-value]
 
 
 class TextChannel(Channel):
