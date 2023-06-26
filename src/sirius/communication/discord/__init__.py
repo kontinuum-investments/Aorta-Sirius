@@ -35,7 +35,10 @@ class Bot(DiscordHTTPModel):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
-    async def get_server(self, server_name: str) -> "Server":
+    async def get_server(self, server_name: Optional[str] = None) -> "Server":
+        if server_name is None:
+            server_name = Server.get_default_server_name()
+
         if len(self.server_list) == 0:
             self.server_list = await Server.get_all_servers()
 
@@ -56,7 +59,7 @@ class Bot(DiscordHTTPModel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Bot")
     async def get(cls) -> "Bot":
-        return await HTTPModel.get_one(cls, constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value, arg-type]
+        return await cls.get_one(constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value]
 
 
 class Server(DiscordHTTPModel):
@@ -90,7 +93,12 @@ class Server(DiscordHTTPModel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Servers")
     async def get_all_servers(cls) -> List["Server"]:
-        return await HTTPModel.get_multiple(cls, constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value, arg-type]
+        return await cls.get_multiple(constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value]
+
+    @staticmethod
+    def get_default_server_name() -> str:
+        server_name: str = common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_NAME)
+        return server_name if common.is_production_environment() else f"{server_name} [Dev]"
 
 
 class Channel(DiscordHTTPModel):
@@ -105,14 +113,14 @@ class Channel(DiscordHTTPModel):
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Channels")
     async def get_all_channels(cls, server: Server) -> List["Channel"]:
         url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
-        return await HTTPModel.get_multiple(cls, url)  # type: ignore[return-value, arg-type]
+        return await cls.get_multiple(url)  # type: ignore[return-value]
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create Channel")
-    async def create(cls, channel_name: str, type_id: int, server: Server) -> "Channel":
+    async def create(cls, channel_name: str, server: Server, type_id: int) -> "Channel":
         url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
         data: Dict[str, Any] = {"name": channel_name, "type": type_id}
-        return await HTTPModel.post_return_one(url, data=data)  # type: ignore[return-value]
+        return await cls.post_return_one(url, data=data)  # type: ignore[return-value]
 
 
 class TextChannel(Channel):
@@ -120,6 +128,7 @@ class TextChannel(Channel):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
+    @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Send Message")
     async def send_message(self, message: str) -> None:
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
         await HTTPRequest.post(url, data={"content": message}, headers=self._headers)
@@ -133,5 +142,11 @@ class TextChannel(Channel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create a Text Channel")
     async def create(cls, text_channel_name: str, server: Server, type_id: int = 0) -> "TextChannel":
-        channel: Channel = await Channel.create(text_channel_name, type_id)
+        channel: Channel = await Channel.create(text_channel_name, server, type_id)
         return TextChannel(**channel.dict())
+
+    @staticmethod
+    async def get_text_channel_from_default_bot_and_server(text_channel_name: str) -> "TextChannel":
+        bot: Bot = await Bot.get()
+        server: Server = await bot.get_server()
+        return await server.get_text_channel(text_channel_name)
