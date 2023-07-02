@@ -1,7 +1,9 @@
 import os
 import threading
 from enum import Enum
-from typing import Callable, Any, Optional
+from typing import Callable, Any, Optional, Dict
+
+from pydantic import BaseModel
 
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
@@ -11,6 +13,11 @@ class Environment(Enum):
     Production: str = "Production"
     Staging: str = "Staging"
     Development: str = "Development"
+
+
+class DataClass(BaseModel):
+    class Config:
+        arbitrary_types_allowed: bool = True
 
 
 def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:
@@ -48,3 +55,14 @@ def threaded(func: Callable) -> Callable:
         return thread
 
     return wrapper
+
+
+def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[Any, Any]) -> bool:
+    if one_dict.keys() not in another_dict.keys():
+        return False
+
+    for key, value in one_dict.items():
+        if another_dict[key] != value:
+            return False
+
+    return True

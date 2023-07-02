@@ -1,14 +1,14 @@
-from abc import abstractmethod
 from enum import Enum
 from logging import Logger
 from typing import List, Optional, Dict, Any
 
 from sirius import application_performance_monitoring, common
 from sirius.application_performance_monitoring import Operation
+from sirius.common import DataClass
 from sirius.communication.discord import constants
 from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException
 from sirius.constants import EnvironmentVariable
-from sirius.http_requests import HTTPModel, HTTPRequest
+from sirius.http_requests import HTTPModel, HTTPSession
 
 logger: Logger = application_performance_monitoring.get_logger()
 
@@ -19,21 +19,17 @@ class ServerName(Enum):
     AORTA: str = "Aorta"
 
 
-class DiscordHTTPModel(HTTPModel):
-    _headers: Optional[Dict[str, Any]] = {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"}
-
-    @abstractmethod
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(**kwargs)
+class DiscordModel(DataClass):
+    _http_session: HTTPSession = HTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
 
 
-class Bot(DiscordHTTPModel):
+class Bot(DiscordModel):
     id: int
     username: str
     server_list: List["Server"] = []
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     async def get_server(self, server_name: Optional[str] = None) -> "Server":
         if server_name is None:
@@ -59,16 +55,16 @@ class Bot(DiscordHTTPModel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Bot")
     async def get(cls) -> "Bot":
-        return await cls.get_one(constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value]
+        return await HTTPModel.get_one(cls, cls._http_session, constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value]
 
 
-class Server(DiscordHTTPModel):
+class Server(DiscordModel):
     id: int
     name: str
     text_channel_list: List["TextChannel"] = []
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     async def get_text_channel(self, text_channel_name: str) -> "TextChannel":
         if len(self.text_channel_list) == 0:
@@ -93,7 +89,7 @@ class Server(DiscordHTTPModel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Servers")
     async def get_all_servers(cls) -> List["Server"]:
-        return await cls.get_multiple(constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value]
+        return await HTTPModel.get_multiple(cls, cls._http_session, constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value]
 
     @staticmethod
     def get_default_server_name() -> str:
@@ -101,37 +97,37 @@ class Server(DiscordHTTPModel):
         return server_name if common.is_production_environment() else f"{server_name} [Dev]"
 
 
-class Channel(DiscordHTTPModel):
+class Channel(DiscordModel):
     id: int
     name: str
     type: int
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Channels")
     async def get_all_channels(cls, server: Server) -> List["Channel"]:
         url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
-        return await cls.get_multiple(url)  # type: ignore[return-value]
+        return await HTTPModel.get_multiple(cls, cls._http_session, url)  # type: ignore[return-value]
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create Channel")
     async def create(cls, channel_name: str, server: Server, type_id: int) -> "Channel":
         url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
         data: Dict[str, Any] = {"name": channel_name, "type": type_id}
-        return await cls.post_return_one(url, data=data)  # type: ignore[return-value]
+        return await HTTPModel.post_return_one(cls, cls._http_session, url, data=data)  # type: ignore[return-value]
 
 
 class TextChannel(Channel):
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
 
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Send Message")
-    async def send_message(self, message: str) -> None:
+    async def send_message(self, message: str) -> "Message":
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
-        await HTTPRequest.post(url, data={"content": message}, headers=self._headers)
+        return await HTTPModel.post_return_one(Message, self._http_session, url, data={"content": message})  # type: ignore[return-value]
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Text Channels")
@@ -150,3 +146,8 @@ class TextChannel(Channel):
         bot: Bot = await Bot.get()
         server: Server = await bot.get_server()
         return await server.get_text_channel(text_channel_name)
+
+
+class Message(DataClass):
+    id: int
+    content: str

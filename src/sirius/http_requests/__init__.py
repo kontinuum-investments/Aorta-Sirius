@@ -1,14 +1,14 @@
 import json
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 
 import httpx
 from httpx import Response, Cookies, Headers, URL, AsyncClient
-from pydantic import BaseModel
 
-from sirius import application_performance_monitoring
+from sirius import application_performance_monitoring, common
 from sirius.application_performance_monitoring import Operation
+from sirius.common import DataClass
 from sirius.http_requests.exceptions import ClientSideException, ServerSideException
 
 
@@ -36,19 +36,27 @@ class HTTPResponse:
         super().__init__(*args, **kwargs)
 
 
-class HTTPRequest:
-    _instance_list: List["HTTPRequest"] = []
+class HTTPSession:
+    _instance_list: List["HTTPSession"] = []
     client: AsyncClient
     host: str
 
-    def __new__(cls, url_str: str) -> "HTTPRequest":
+    def __new__(cls, url_str: str, headers: Optional[Dict[str, Any]] = None) -> "HTTPSession":
         host: str = URL(url_str).host
-        instance: Optional[HTTPRequest] = next(filter(lambda h: h is not None and h.host == host, cls._instance_list), None)
+        instance: Optional[HTTPSession] = None
+
+        for i in cls._instance_list:
+            if i.host == host and (headers is not None or common.is_dict_include_another_dict(cast(Dict[str, Any], headers), dict(i.client.headers))):
+                instance = i
 
         if instance is None:
             instance = super().__new__(cls)
             instance.host = host
             instance.client = httpx.AsyncClient()
+
+            if headers is not None:
+                instance.client.headers.update(headers)
+
             cls._instance_list.append(instance)
 
         if instance.client.is_closed:
@@ -56,7 +64,7 @@ class HTTPRequest:
 
         return instance
 
-    def __init__(self, url_str: str) -> None:
+    def __init__(self, url_str: str, headers: Optional[Dict[str, Any]] = None) -> None:
         pass
 
     @staticmethod
@@ -73,73 +81,64 @@ class HTTPRequest:
         else:
             raise ServerSideException(error_message)
 
-    @staticmethod
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "GET")
-    async def get(url: str, query_params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
-        http_request: HTTPRequest = HTTPRequest(url)
-        http_response: HTTPResponse = HTTPResponse(await http_request.client.get(url, params=query_params, headers=headers))
+    async def get(self, url: str, query_params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+        http_response: HTTPResponse = HTTPResponse(await self.client.get(url, params=query_params, headers=headers))
         if not http_response.is_successful:
-            HTTPRequest.raise_http_exception(http_response)
+            HTTPSession.raise_http_exception(http_response)
 
         return http_response
 
-    @staticmethod
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "PUT")
-    async def put(url: str, data: Dict[str, Any], headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
-        http_request: HTTPRequest = HTTPRequest(url)
-        http_response: HTTPResponse = HTTPResponse(await http_request.client.put(url, data=data, headers=headers))
+    async def put(self, url: str, data: Dict[str, Any], headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+        http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data, headers=headers))
         if not http_response.is_successful:
-            HTTPRequest.raise_http_exception(http_response)
+            HTTPSession.raise_http_exception(http_response)
 
         return http_response
 
-    @staticmethod
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "POST")
-    async def post(url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
-        http_request: HTTPRequest = HTTPRequest(url)
+    async def post(self, url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
         data_string: Optional[str] = None
-
-        if headers is not None:
-            headers["content-type"] = "application/json"
-
         if data is not None:
             data_string = json.dumps(data)
 
-        http_response: HTTPResponse = HTTPResponse(await http_request.client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
+            if headers is None:
+                headers = {}
+            headers["content-type"] = "application/json"
+
+        http_response: HTTPResponse = HTTPResponse(await self.client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
         if not http_response.is_successful:
-            HTTPRequest.raise_http_exception(http_response)
+            HTTPSession.raise_http_exception(http_response)
 
         return http_response
 
-    @staticmethod
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
-    async def delete(url: str, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
-        http_request: HTTPRequest = HTTPRequest(url)
-        http_response: HTTPResponse = HTTPResponse(await http_request.client.delete(url, headers=headers))
+    async def delete(self, url: str, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+        http_response: HTTPResponse = HTTPResponse(await self.client.delete(url, headers=headers))
         if not http_response.is_successful:
-            HTTPRequest.raise_http_exception(http_response)
+            HTTPSession.raise_http_exception(http_response)
 
         return http_response
 
 
-class HTTPModel(BaseModel):
-    _headers: Optional[Dict[str, Any]] = None
+class HTTPModel(DataClass):
 
     @abstractmethod
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    @classmethod
-    async def get_one(cls, url: str, query_params: Optional[Dict[str, Any]] = None) -> "HTTPModel":
-        response: HTTPResponse = await HTTPRequest.get(url=url, query_params=query_params, headers=cls._headers)
+    @staticmethod
+    async def get_one(cls: type, http_session: HTTPSession, url: str, query_params: Optional[Dict[str, Any]] = None) -> DataClass:
+        response: HTTPResponse = await http_session.get(url=url, query_params=query_params)
         return cls(**response.data)  # type: ignore[arg-type]
 
-    @classmethod
-    async def get_multiple(cls, url: str, query_params: Optional[Dict[str, Any]] = None) -> List["HTTPModel"]:
-        response: HTTPResponse = await HTTPRequest.get(url=url, query_params=query_params, headers=cls._headers)
+    @staticmethod
+    async def get_multiple(cls: type, http_session: HTTPSession, url: str, query_params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> List[DataClass]:
+        response: HTTPResponse = await http_session.get(url=url, query_params=query_params, headers=headers)
         return [cls(**data) for data in response.data]  # type: ignore[union-attr]
 
-    @classmethod
-    async def post_return_one(cls, url: str, data: Optional[Dict[Any, Any]] = None) -> "HTTPModel":
-        response: HTTPResponse = await HTTPRequest.post(url=url, data=data, headers=cls._headers)
+    @staticmethod
+    async def post_return_one(cls: type, http_session: HTTPSession, url: str, data: Optional[Dict[Any, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> DataClass:
+        response: HTTPResponse = await http_session.post(url=url, data=data, headers=headers)
         return cls(**response.data)  # type: ignore[arg-type]
