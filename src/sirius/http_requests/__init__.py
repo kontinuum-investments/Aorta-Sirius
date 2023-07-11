@@ -1,10 +1,11 @@
 import json
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, cast
+from typing import Dict, Any, List, cast
 
 import httpx
 from httpx import Response, Cookies, Headers, URL, AsyncClient
+from pydantic import BaseModel
 
 from sirius import application_performance_monitoring, common
 from sirius.application_performance_monitoring import Operation
@@ -18,9 +19,9 @@ class HTTPResponse:
     response_code: int
     is_successful: bool
     headers: Headers
-    data: Optional[Dict[Any, Any]] = None
-    response_text: Optional[str] = None
-    cookies: Optional[Cookies] = None
+    data: Dict[Any, Any] | None = None
+    response_text: str | None = None
+    cookies: Cookies | None = None
 
     def __init__(self, response: Response, *args: List[Any], **kwargs: Dict[str, Any]) -> None:
         self.response = response
@@ -41,12 +42,12 @@ class HTTPSession:
     client: AsyncClient
     host: str
 
-    def __new__(cls, url_str: str, headers: Optional[Dict[str, Any]] = None) -> "HTTPSession":
+    def __new__(cls, url_str: str, headers: Dict[str, Any] | None = None) -> "HTTPSession":
         host: str = URL(url_str).host
-        instance: Optional[HTTPSession] = None
+        instance: HTTPSession | None = None
 
         for i in cls._instance_list:
-            if i.host == host and (headers is not None or common.is_dict_include_another_dict(cast(Dict[str, Any], headers), dict(i.client.headers))):
+            if i.host == host and (headers is None or common.is_dict_include_another_dict(cast(Dict[str, Any], headers), dict(i.client.headers))):
                 instance = i
 
         if instance is None:
@@ -64,7 +65,7 @@ class HTTPSession:
 
         return instance
 
-    def __init__(self, url_str: str, headers: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, url_str: str, headers: Dict[str, Any] | None = None) -> None:
         pass
 
     @staticmethod
@@ -82,7 +83,7 @@ class HTTPSession:
             raise ServerSideException(error_message)
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "GET")
-    async def get(self, url: str, query_params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+    async def get(self, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.get(url, params=query_params, headers=headers))
         if not http_response.is_successful:
             HTTPSession.raise_http_exception(http_response)
@@ -90,7 +91,7 @@ class HTTPSession:
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "PUT")
-    async def put(self, url: str, data: Dict[str, Any], headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+    async def put(self, url: str, data: Dict[str, Any], headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data, headers=headers))
         if not http_response.is_successful:
             HTTPSession.raise_http_exception(http_response)
@@ -98,8 +99,8 @@ class HTTPSession:
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "POST")
-    async def post(self, url: str, data: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
-        data_string: Optional[str] = None
+    async def post(self, url: str, data: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> HTTPResponse:
+        data_string: str | None = None
         if data is not None:
             data_string = json.dumps(data)
 
@@ -114,7 +115,7 @@ class HTTPSession:
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
-    async def delete(self, url: str, headers: Optional[Dict[str, Any]] = None) -> HTTPResponse:
+    async def delete(self, url: str, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.delete(url, headers=headers))
         if not http_response.is_successful:
             HTTPSession.raise_http_exception(http_response)
@@ -129,16 +130,25 @@ class HTTPModel(DataClass):
         super().__init__(**data)
 
     @staticmethod
-    async def get_one(cls: type, http_session: HTTPSession, url: str, query_params: Optional[Dict[str, Any]] = None) -> DataClass:
+    async def get_one(cls: type, http_session: HTTPSession, url: str, query_params: Dict[str, Any] | None = None) -> DataClass:
+        if not issubclass(cls, BaseModel):
+            raise ServerSideException(f"{cls.__name__} is not a Pydantic subclass")
+
         response: HTTPResponse = await http_session.get(url=url, query_params=query_params)
         return cls(**response.data)  # type: ignore[arg-type]
 
     @staticmethod
-    async def get_multiple(cls: type, http_session: HTTPSession, url: str, query_params: Optional[Dict[str, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> List[DataClass]:
+    async def get_multiple(cls: type, http_session: HTTPSession, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> List[DataClass]:
+        if not issubclass(cls, BaseModel):
+            raise ServerSideException(f"{cls.__name__} is not a Pydantic subclass")
+
         response: HTTPResponse = await http_session.get(url=url, query_params=query_params, headers=headers)
         return [cls(**data) for data in response.data]  # type: ignore[union-attr]
 
     @staticmethod
-    async def post_return_one(cls: type, http_session: HTTPSession, url: str, data: Optional[Dict[Any, Any]] = None, headers: Optional[Dict[str, Any]] = None) -> DataClass:
+    async def post_return_one(cls: type, http_session: HTTPSession, url: str, data: Dict[Any, Any] | None = None, headers: Dict[str, Any] | None = None) -> DataClass:
+        if not issubclass(cls, BaseModel):
+            raise ServerSideException(f"{cls.__name__} is not a Pydantic subclass")
+
         response: HTTPResponse = await http_session.post(url=url, data=data, headers=headers)
         return cls(**response.data)  # type: ignore[arg-type]

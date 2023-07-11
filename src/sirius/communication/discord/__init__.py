@@ -1,6 +1,6 @@
 from enum import Enum
 from logging import Logger
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 
 from sirius import application_performance_monitoring, common
 from sirius.application_performance_monitoring import Operation
@@ -31,7 +31,7 @@ class Bot(DiscordModel):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-    async def get_server(self, server_name: Optional[str] = None) -> "Server":
+    async def get_server(self, server_name: str | None = None) -> "Server":
         if server_name is None:
             server_name = Server.get_default_server_name()
 

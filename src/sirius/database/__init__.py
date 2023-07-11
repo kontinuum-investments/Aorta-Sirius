@@ -1,6 +1,6 @@
 import functools
 from logging import Logger
-from typing import Optional, Dict, Any, List, Callable
+from typing import Dict, Any, List, Callable
 
 import beanie.odm.fields
 from beanie import Document, init_beanie
@@ -40,7 +40,7 @@ def transaction(transaction_name: str) -> Callable:
 
 
 class DatabaseDocument(Document):
-    id: Optional[beanie.PydanticObjectId] = None
+    id: beanie.PydanticObjectId | None = None
 
     class Settings:
         validate_on_save = True
@@ -72,7 +72,7 @@ class DatabaseDocument(Document):
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.DATABASE, "Find Single")
-    async def find_unique(cls, *args: List[Any], fetch_links: bool = False) -> Optional["DatabaseDocument"]:
+    async def find_unique(cls, *args: List[Any], fetch_links: bool = False) -> "DatabaseDocument" | None:
         results_list: List[DatabaseDocument] = await super().find_many(*args).to_list()  # type: ignore[call-overload]
 
         if len(results_list) == 1:

@@ -1,7 +1,7 @@
 import os
 import threading
 from enum import Enum
-from typing import Callable, Any, Optional, Dict
+from typing import Callable, Any, Dict
 
 from pydantic import BaseModel
 
@@ -15,13 +15,23 @@ class Environment(Enum):
     Development: str = "Development"
 
 
+class Currency(Enum):
+    USD: str = "USD"
+    SGD: str = "SGD"
+    AUD: str = "AUD"
+    NZD: str = "NZD"
+    LKR: str = "LKR"
+    GBP: str = "GBP"
+    EUR: str = "EUR"
+
+
 class DataClass(BaseModel):
     class Config:
         arbitrary_types_allowed: bool = True
 
 
 def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:
-    value: Optional[str] = os.getenv(environmental_variable.value)
+    value: str | None = os.getenv(environmental_variable.value)
     if value is None:
         raise ApplicationException(f"Environment variable with the key is not available: {environmental_variable.value}")
 
@@ -29,7 +39,7 @@ def get_environmental_variable(environmental_variable: EnvironmentVariable) -> s
 
 
 def get_environment() -> Environment:
-    environment: Optional[str] = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
+    environment: str | None = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
     try:
         return Environment.Development if environment is None else Environment(environment)
     except ValueError:
@@ -58,7 +68,7 @@ def threaded(func: Callable) -> Callable:
 
 
 def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[Any, Any]) -> bool:
-    if one_dict.keys() not in another_dict.keys():
+    if not all(key in one_dict for key in another_dict):
         return False
 
     for key, value in one_dict.items():
