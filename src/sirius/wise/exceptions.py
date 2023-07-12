@@ -15,3 +15,7 @@ class CurrencyNotFoundException(WiseException, SDKClientException):
 
 class ReserveAccountNotFoundException(WiseException, SDKClientException):
     pass
+
+
+class RecipientNotFoundException(WiseException, SDKClientException):
+    pass
