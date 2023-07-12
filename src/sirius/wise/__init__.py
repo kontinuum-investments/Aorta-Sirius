@@ -58,7 +58,7 @@ class Profile(DataClass):
 
     @property
     def http_session(self) -> HTTPSession:
-        return self.wise_account.http_session
+        return self.wise_account.http_session  # type: ignore[union-attr]
 
     def get_cash_account(self, currency: Currency) -> "CashAccount":
         try:
@@ -117,7 +117,7 @@ class Account(DataClass):
     name: str | None
     currency: Currency
     balance: Decimal
-    profile: PersonalProfile | BusinessProfile
+    profile: Profile
 
     @property
     def http_session(self) -> HTTPSession:
@@ -131,11 +131,11 @@ class Account(DataClass):
         }
 
         if is_reserve_account:
-            data["name"] = account_name
+            data["name"] = account_name  # type: ignore[assignment]
 
         response: HTTPResponse = await http_session.post(constants.ENDPOINT__BALANCE__CREATE.replace("$profileId", str(profile.id)), data=data, headers={"X-idempotence-uuid": str(uuid.uuid4())})
         return Account(
-            id=response.data["id"],
+            id=response.data["id"],  # type: ignore[index]
             name=account_name,
             currency=currency,
             balance=Decimal("0"),
