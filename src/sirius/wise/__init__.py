@@ -19,6 +19,14 @@ class WiseAccountType(Enum):
     SECONDARY = auto()
 
 
+class TransactionType(Enum):
+    CARD: str = "CARD"
+    CONVERSION: str = "CONVERSION"
+    DEPOSIT: str = "DEPOSIT"
+    TRANSFER: str = "TRANSFER"
+    MONEY_ADDED: str = "MONEY_ADDED"
+
+
 class WiseAccount(DataClass):
     type: WiseAccountType
     personal_profile: "PersonalProfile"
@@ -122,6 +130,14 @@ class BusinessProfile(Profile):
     pass
 
 
+class Transaction(DataClass):
+    account: "Account"
+    date: datetime.datetime
+    type: TransactionType
+    description: str
+    amount: Decimal
+
+
 class Account(DataClass):
     id: int
     name: str | None
@@ -132,6 +148,38 @@ class Account(DataClass):
     @property
     def http_session(self) -> HTTPSession:
         return self.profile.http_session
+
+    async def close(self) -> None:
+        if self.balance != Decimal("0"):
+            raise OperationNotSupportedException(f"Cannot close account due to non-zero account balance:\n"
+                                                 f"Account Name: {self.name}\n"
+                                                 f"Currency: {self.currency.value}\n"
+                                                 f"Balance: {str(self.balance)}")
+
+        await self.http_session.delete(constants.ENDPOINT__BALANCE__CLOSE.replace("$profileId", str(self.profile.id)).replace("$balanceId", str(self.id)))
+        await self.profile.wise_account.initialize()
+
+    async def get_transactions(self, from_time: datetime.datetime | None = None, to_time: datetime.datetime | None = None) -> List["Transaction"]:
+        if from_time is None:
+            from_time = datetime.datetime.now() - datetime.timedelta(days=1)
+
+        if to_time is None:
+            to_time = datetime.datetime.now()
+
+        response: HTTPResponse = await self.http_session.get(constants.ENDPOINT__BALANCE__GET_TRANSACTIONS.replace("$profileId", str(self.profile.id)).replace("$balanceId", str(self.id)), query_params={
+            "currency": self.currency.value,
+            "intervalStart": f"{from_time.astimezone(datetime.timezone.utc).replace(microsecond=0).isoformat().split('+')[0]}Z",
+            "intervalEnd": f"{to_time.astimezone(datetime.timezone.utc).replace(microsecond=0).isoformat().split('+')[0]}Z",
+            "type": "COMPACT"
+        })
+
+        return [Transaction(
+            account=self,
+            date=data["date"],
+            type=TransactionType(data["details"]["type"]),
+            description=data["details"]["description"],
+            amount=Decimal(str(data["amount"]["value"])),
+        ) for data in response.data["transactions"]]
 
     @staticmethod
     async def abstract_open(profile: Profile, account_name: str | None, currency: Currency, is_reserve_account: bool) -> "Account":
@@ -151,16 +199,6 @@ class Account(DataClass):
             balance=Decimal("0"),
             profile=profile
         )
-
-    async def close(self) -> None:
-        if self.balance != Decimal("0"):
-            raise OperationNotSupportedException(f"Cannot close account due to non-zero account balance:\n"
-                                                 f"Account Name: {self.name}\n"
-                                                 f"Currency: {self.currency.value}\n"
-                                                 f"Balance: {str(self.balance)}")
-
-        await self.http_session.delete(constants.ENDPOINT__BALANCE__CLOSE.replace("$profileId", str(self.profile.id)).replace("$balanceId", str(self.id)))
-        await self.profile.wise_account.initialize()
 
 
 class CashAccount(Account):
@@ -305,7 +343,8 @@ class Transfer(DataClass):
     @staticmethod
     async def intra_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: CashAccount, amount: Decimal) -> "Transfer":
         quote: Quote = await Quote.get_quote(profile, from_account, to_account, amount)
-        response: HTTPResponse = await profile.http_session.post(constants.ENDPOINT__BALANCE__MOVE_MONEY_BETWEEN_BALANCES.replace("$profileId", str(profile.id)), data={"quoteId": quote.id}, headers={"X-idempotence-uuid": str(uuid.uuid4())})
+        response: HTTPResponse = await profile.http_session.post(constants.ENDPOINT__BALANCE__MOVE_MONEY_BETWEEN_BALANCES.replace("$profileId", str(profile.id)), data={"quoteId": quote.id},
+                                                                 headers={"X-idempotence-uuid": str(uuid.uuid4())})
         return Transfer(
             id=response.data["id"],
             from_account=from_account,
@@ -418,3 +457,4 @@ PersonalProfile.update_forward_refs()
 BusinessProfile.update_forward_refs()
 Account.update_forward_refs()
 DebitCard.update_forward_refs()
+Transaction.update_forward_refs()

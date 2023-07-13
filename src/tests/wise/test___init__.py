@@ -1,8 +1,11 @@
+import datetime
+from typing import List
+
 import pytest
 from _decimal import Decimal
 
 from sirius.common import Currency
-from sirius.wise import WiseAccount, WiseAccountType, Transfer, CashAccount, ReserveAccount, Recipient, CurrencyNotFoundException, ReserveAccountNotFoundException, OperationNotSupportedException
+from sirius.wise import WiseAccount, WiseAccountType, Transfer, CashAccount, ReserveAccount, Recipient, CurrencyNotFoundException, ReserveAccountNotFoundException, OperationNotSupportedException, Transaction
 
 
 @pytest.mark.asyncio
@@ -105,8 +108,17 @@ async def test_cash_account_to_different_currency_reserve_account_transfer() -> 
     with pytest.raises(OperationNotSupportedException):
         await usd_account.transfer(reserve_account, Decimal("1"))
 
+
 #
 # @pytest.mark.asyncio
 # async def test_get_debit_card() -> None:
 #     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
 #     assert wise_account.personal_profile.debit_card_list[0].token is not None
+
+
+@pytest.mark.asyncio
+async def test_get_transactions() -> None:
+    wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+    usd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.USD)
+    transactions_list: List[Transaction] = await usd_account.get_transactions(from_time=datetime.datetime.now() - datetime.timedelta(days=365))
+    assert transactions_list[0].amount is not None
