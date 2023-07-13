@@ -27,7 +27,7 @@ async def test_open_and_close_cash_account() -> None:
 
 
 @pytest.mark.asyncio
-async def test_close_cash_account_with_non_zero_balance() -> None:
+async def test_close_account_with_non_zero_balance() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     cash_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.EUR, True)
     with pytest.raises(OperationNotSupportedException):

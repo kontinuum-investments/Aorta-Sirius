@@ -1,0 +1,4 @@
+[report]
+include =
+    src\sirius\communication\*
+    src\sirius\wise\*
