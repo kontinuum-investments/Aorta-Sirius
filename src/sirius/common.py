@@ -23,6 +23,7 @@ class Currency(Enum):
     LKR: str = "LKR"
     GBP: str = "GBP"
     EUR: str = "EUR"
+    HUF: str = "HUF"
 
 
 class DataClass(BaseModel):

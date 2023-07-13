@@ -9,7 +9,7 @@ from sirius.wise import WiseAccount, WiseAccountType, Transfer, CashAccount, Res
 async def test_get_invalid_cash_account() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     with pytest.raises(CurrencyNotFoundException):
-        wise_account.personal_profile.get_cash_account(Currency.LKR)
+        await wise_account.personal_profile.get_cash_account(Currency.LKR)
 
 
 @pytest.mark.asyncio
@@ -20,10 +20,32 @@ async def test_get_invalid_reserve_account() -> None:
 
 
 @pytest.mark.asyncio
+async def test_open_and_close_cash_account() -> None:
+    wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+    cash_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.HUF, True)
+    await cash_account.close()
+
+
+@pytest.mark.asyncio
+async def test_close_cash_account_with_non_zero_balance() -> None:
+    wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+    cash_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.EUR, True)
+    with pytest.raises(OperationNotSupportedException):
+        await cash_account.close()
+
+
+@pytest.mark.asyncio
+async def test_open_and_close_reserve_account() -> None:
+    wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+    reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.EUR, True)
+    await reserve_account.close()
+
+
+@pytest.mark.asyncio
 async def test_intra_cash_account_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
-    usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
-    gbp_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.GBP)
+    usd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.USD)
+    gbp_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.GBP)
     transfer: Transfer = await usd_account.transfer(gbp_account, Decimal("1"))
     assert transfer.id is not None
 
@@ -31,7 +53,7 @@ async def test_intra_cash_account_transfer() -> None:
 @pytest.mark.asyncio
 async def test_cash_to_same_currency_savings_account_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
-    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
+    nzd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.NZD)
     reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
     transfer: Transfer = await nzd_account.transfer(reserve_account, Decimal("1"))
     assert transfer.id is not None
@@ -40,7 +62,7 @@ async def test_cash_to_same_currency_savings_account_transfer() -> None:
 @pytest.mark.asyncio
 async def test_cash_to_same_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
-    usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
+    usd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.USD)
     recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
     transfer: Transfer = await usd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
@@ -49,7 +71,7 @@ async def test_cash_to_same_currency_third_party_transfer() -> None:
 @pytest.mark.asyncio
 async def test_cash_to_different_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
-    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
+    nzd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.NZD)
     recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
     transfer: Transfer = await nzd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
@@ -59,7 +81,7 @@ async def test_cash_to_different_currency_third_party_transfer() -> None:
 async def test_savings_to_same_currency_cash_account_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
-    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
+    nzd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.NZD)
     transfer: Transfer = await reserve_account.transfer(nzd_account, Decimal("1"))
     assert transfer.id is not None
 
@@ -68,7 +90,7 @@ async def test_savings_to_same_currency_cash_account_transfer() -> None:
 async def test_savings_to_different_currency_cash_account_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
-    usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
+    usd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.USD)
 
     with pytest.raises(OperationNotSupportedException):
         await reserve_account.transfer(usd_account, Decimal("1"))
@@ -78,7 +100,13 @@ async def test_savings_to_different_currency_cash_account_transfer() -> None:
 async def test_cash_account_to_different_currency_reserve_account_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
-    usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
+    usd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.USD)
 
     with pytest.raises(OperationNotSupportedException):
         await usd_account.transfer(reserve_account, Decimal("1"))
+
+#
+# @pytest.mark.asyncio
+# async def test_get_debit_card() -> None:
+#     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+#     assert wise_account.personal_profile.debit_card_list[0].token is not None
