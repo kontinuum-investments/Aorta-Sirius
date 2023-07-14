@@ -13,12 +13,12 @@ def is_installing() -> bool:
 
 
 def get_version() -> str:
-    import requests
-    from requests import Response
-
     if is_installing():
         with open("PKG-INFO", "r") as package_info_file:
             return package_info_file.read().split("\n")[2].replace("Version: ", "")
+
+    import requests
+    from requests import Response
 
     response: Response = requests.get(f"https://pypi.org/pypi/{get_package_name()}/json")
     assert response.status_code == 200
