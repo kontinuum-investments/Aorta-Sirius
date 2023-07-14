@@ -36,6 +36,6 @@ setup(
     author_email="kavindu@kih.com.sg",
     packages=find_packages(where="src", include=["sirius*"]),
     package_dir={"": "src"},
-    package_data={"": ["*.txt"]},
+    include_package_data=True,
     install_requires=get_required_packages()
 )
