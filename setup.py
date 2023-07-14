@@ -24,7 +24,7 @@ def is_production_branch() -> bool:
 
 
 def get_required_packages() -> List[str]:
-    with open("requirements.txt", "r") as requirements_file:
+    with open("src/sirius/requirements.txt", "r") as requirements_file:
         return requirements_file.read().split("\n")
 
 
