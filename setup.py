@@ -8,15 +8,23 @@ def get_package_name() -> str:
     return "aorta_sirius" if is_production_branch() else "aorta_sirius_dev"
 
 
+def is_installing() -> bool:
+    return os.path.isfile("PKG-INFO")
+
+
 def get_version() -> str:
     import requests
     from requests import Response
+
+    if is_installing():
+        with open("PKG-INFO", "r") as package_info_file:
+            return package_info_file.read().split("\n")[2].replace("Version: ", "")
 
     response: Response = requests.get(f"https://pypi.org/pypi/{get_package_name()}/json")
     assert response.status_code == 200
     version_number: str = response.json()["info"]["version"]
     next_subversion_number: int = int(version_number.split(".")[-1]) + 1
-    return version_number if os.path.isfile("PKG-INFO") else ".".join(version_number.split(".")[0:-1], ) + "." + str(next_subversion_number)
+    return ".".join(version_number.split(".")[0:-1], ) + "." + str(next_subversion_number)
 
 
 def is_production_branch() -> bool:
