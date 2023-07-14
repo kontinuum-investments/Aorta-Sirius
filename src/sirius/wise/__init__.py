@@ -8,10 +8,13 @@ from pydantic import PrivateAttr
 
 from sirius import common
 from sirius.common import DataClass, Currency
+from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels
 from sirius.constants import EnvironmentVariable
 from sirius.http_requests import HTTPSession, HTTPModel, HTTPResponse
 from sirius.wise import constants
 from sirius.wise.exceptions import CurrencyNotFoundException, ReserveAccountNotFoundException, OperationNotSupportedException, RecipientNotFoundException
+
+discord_text_channel: TextChannel = None
 
 
 class WiseAccountType(Enum):
@@ -41,6 +44,12 @@ class WiseAccount(DataClass):
         profile_list: List[Profile] = await Profile.get_all(self)
         self.personal_profile = cast(PersonalProfile, next(filter(lambda p: p.type.lower() == "personal", profile_list)))
         self.business_profile = cast(BusinessProfile, next(filter(lambda p: p.type.lower() == "business", profile_list)))
+
+        global discord_text_channel
+        if discord_text_channel is None:
+            bot: Bot = await Bot.get()
+            server: Server = await bot.get_server()
+            discord_text_channel = await server.get_text_channel(AortaTextChannels.WISE.value)
 
     @staticmethod
     async def get(wise_account_type: WiseAccountType) -> "WiseAccount":
@@ -154,7 +163,7 @@ class Account(DataClass):
             raise OperationNotSupportedException(f"Cannot close account due to non-zero account balance:\n"
                                                  f"Account Name: {self.name}\n"
                                                  f"Currency: {self.currency.value}\n"
-                                                 f"Balance: {str(self.balance)}")
+                                                 f"Balance: {'{:,}'.format(self.balance)}")
 
         await self.http_session.delete(constants.ENDPOINT__BALANCE__CLOSE.replace("$profileId", str(self.profile.id)).replace("$balanceId", str(self.id)))
         await self.profile.wise_account.initialize()
@@ -210,10 +219,31 @@ class CashAccount(Account):
         transfer: Transfer = Transfer.construct()
         if isinstance(to_account, CashAccount):
             transfer = await Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount)
+            await discord_text_channel.send_message(f"--------------------------------------------\n"
+                                                    f"Intra-Account Transfer:\n\n"
+                                                    f"From: {self.currency.value}\n"
+                                                    f"To: {to_account.currency.value}\n"
+                                                    f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
+                                                    f"--------------------------------------------"
+                                                    )
+
         elif isinstance(to_account, ReserveAccount):
             transfer = await Transfer.cash_to_savings_account_transfer(self.profile, self, to_account, amount)
+            await discord_text_channel.send_message(f"--------------------------------------------\n"
+                                                    f"Intra-Account Transfer:\n\n"
+                                                    f"From: {self.currency.value}\n"
+                                                    f"To: {to_account.name}\n"
+                                                    f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
+                                                    f"--------------------------------------------")
+
         elif isinstance(to_account, Recipient):
             transfer = await Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount, "" if reference is None else reference)
+            await discord_text_channel.send_message(f"--------------------------------------------\n"
+                                                    f"Third-Party Transfer:\n\n"
+                                                    f"From: {self.currency.value}\n"
+                                                    f"To: {to_account.account_holder_name}\n"
+                                                    f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
+                                                    f"--------------------------------------------")
 
         await self.profile.wise_account.initialize()
         return transfer
@@ -236,7 +266,7 @@ class CashAccount(Account):
             id=data["id"],
             name=data["name"],
             currency=Currency(data["cashAmount"]["currency"]),
-            balance=Decimal(data["cashAmount"]["value"]),
+            balance=Decimal(str(data["cashAmount"]["value"])),
             profile=profile
         ) for data in response.data]
 
@@ -247,11 +277,18 @@ class CashAccount(Account):
 
 class ReserveAccount(Account):
 
-    async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal, reference: str | None = None) -> "Transfer":
+    async def transfer(self, to_account: "CashAccount", amount: Decimal, reference: str | None = None) -> "Transfer":
         if self.currency != to_account.currency:
             raise OperationNotSupportedException("Direct inter-currency transfers from a reserve account is not supported")
 
-        transfer: Transfer = await Transfer.savings_to_cash_account_transfer(self.profile, self, to_account, amount)  # type: ignore[arg-type]
+        transfer: Transfer = await Transfer.savings_to_cash_account_transfer(self.profile, self, to_account, amount)
+        await discord_text_channel.send_message(f"--------------------------------------------\n"
+                                                f"Intra-Account Transfer:\n\n"
+                                                f"From: {self.name}\n"
+                                                f"To: {to_account.currency.value}\n"
+                                                f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
+                                                f"--------------------------------------------\n")
+
         await self.profile.wise_account.initialize()
         return transfer
 
@@ -262,7 +299,7 @@ class ReserveAccount(Account):
             id=data["id"],
             name=data["name"],
             currency=Currency(data["cashAmount"]["currency"]),
-            balance=Decimal(data["cashAmount"]["value"]),
+            balance=Decimal(str(data["cashAmount"]["value"])),
             profile=profile,
         ) for data in response.data]
 

@@ -5,7 +5,8 @@ import pytest
 import pytest_asyncio
 from _decimal import Decimal
 
-from sirius.wise import WiseAccount, WiseAccountType
+from sirius.common import Currency
+from sirius.wise import WiseAccount, WiseAccountType, ReserveAccount, CashAccount
 
 
 @pytest.fixture(scope="session")
@@ -21,3 +22,7 @@ async def initialize_balances() -> None:
             continue
 
         await cash_account.simulate_top_up(Decimal("1000") - cash_account.balance)
+
+    test_reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD)
+    nzd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.NZD)
+    await nzd_account.transfer(test_reserve_account, Decimal("100"))

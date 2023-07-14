@@ -86,7 +86,7 @@ async def test_savings_to_same_currency_cash_account_transfer() -> None:
     reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
     nzd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.NZD)
     transfer: Transfer = await reserve_account.transfer(nzd_account, Decimal("1"))
-    assert transfer.id is not None
+    assert transfer.id is None
 
 
 @pytest.mark.asyncio

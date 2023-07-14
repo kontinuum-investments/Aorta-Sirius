@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import os
 import threading
 from enum import Enum
@@ -6,7 +8,7 @@ from typing import Callable, Any, Dict
 from pydantic import BaseModel
 
 from sirius.constants import EnvironmentVariable
-from sirius.exceptions import ApplicationException
+from sirius.exceptions import ApplicationException, SDKClientException
 
 
 class Environment(Enum):
@@ -103,6 +105,19 @@ def threaded(func: Callable) -> Callable:
         thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
         thread.start()
         return thread
+
+    return wrapper
+
+
+def wait_for_all_coroutines(func: Callable) -> Callable:
+    if not inspect.iscoroutinefunction(func):
+        raise SDKClientException(f"Synchronous method used to in asynchronous context: {func.__module__}.{func.__name__}")
+
+    # TODO: Manage Exceptions
+    async def wrapper(*args: Any, **kwargs: Any) -> None:
+        asyncio.create_task(func(*args, **kwargs))
+        await asyncio.wait(set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())), timeout=600)  # type: ignore[type-var,arg-type,union-attr,attr-defined]
+        return None
 
     return wrapper
 

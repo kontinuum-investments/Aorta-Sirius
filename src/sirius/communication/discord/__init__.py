@@ -19,6 +19,10 @@ class ServerName(Enum):
     AORTA: str = "Aorta"
 
 
+class AortaTextChannels(Enum):
+    WISE: str = "wise"
+
+
 class DiscordModel(DataClass):
     _http_session: HTTPSession = HTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
 
