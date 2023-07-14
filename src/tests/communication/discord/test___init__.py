@@ -1,6 +1,14 @@
+import asyncio
+from asyncio import AbstractEventLoop
+
 import pytest
 
 from sirius.communication.discord import Bot, Server, TextChannel, Message
+
+
+@pytest.fixture(scope="session")
+def event_loop() -> AbstractEventLoop:
+    return asyncio.get_event_loop()
 
 
 @pytest.mark.asyncio
