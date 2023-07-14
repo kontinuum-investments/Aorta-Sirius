@@ -1,8 +1,6 @@
 import os
 from typing import List
 
-import requests
-from requests import Response
 from setuptools import setup, find_packages
 
 
@@ -11,6 +9,9 @@ def get_package_name() -> str:
 
 
 def get_next_version() -> str:
+    import requests
+    from requests import Response
+
     response: Response = requests.get(f"https://pypi.org/pypi/{get_package_name()}/json")
     assert response.status_code == 200
     version_number: str = response.json()["info"]["version"]
