@@ -24,7 +24,7 @@ def is_production_branch() -> bool:
 
 
 def get_required_packages() -> List[str]:
-    with open("src/sirius/requirements.txt", "r") as requirements_file:
+    with open("requirements.txt", "r") as requirements_file:
         return requirements_file.read().split("\n")
 
 
@@ -36,5 +36,6 @@ setup(
     author_email="kavindu@kih.com.sg",
     packages=find_packages(where="src", include=["sirius*"]),
     package_dir={"": "src"},
+    package_data={"": ["*.txt"]},
     install_requires=get_required_packages()
 )
