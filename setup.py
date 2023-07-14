@@ -8,7 +8,7 @@ def get_package_name() -> str:
     return "aorta_sirius" if is_production_branch() else "aorta_sirius_dev"
 
 
-def get_next_version() -> str:
+def get_version() -> str:
     import requests
     from requests import Response
 
@@ -16,7 +16,7 @@ def get_next_version() -> str:
     assert response.status_code == 200
     version_number: str = response.json()["info"]["version"]
     next_subversion_number: int = int(version_number.split(".")[-1]) + 1
-    return ".".join(version_number.split(".")[0:-1], ) + "." + str(next_subversion_number)
+    return version_number if os.path.isfile("PKG-INFO") else ".".join(version_number.split(".")[0:-1], ) + "." + str(next_subversion_number)
 
 
 def is_production_branch() -> bool:
@@ -32,7 +32,7 @@ def get_required_packages() -> List[str]:
 
 setup(
     name=get_package_name(),
-    version=get_next_version(),
+    version=get_version(),
     url="https://github.com/kontinuum-investments/Aorta-Sirius",
     author="Kavindu Athaudha",
     author_email="kavindu@kih.com.sg",
