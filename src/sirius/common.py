@@ -5,6 +5,7 @@ import threading
 from enum import Enum
 from typing import Callable, Any, Dict
 
+from _decimal import Decimal
 from pydantic import BaseModel
 
 from sirius.constants import EnvironmentVariable
@@ -139,3 +140,7 @@ def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[An
             return False
 
     return True
+
+
+def get_decimal_str(decimal: Decimal) -> str:
+    return "{:,.2f}".format(float(decimal))
