@@ -220,34 +220,28 @@ class CashAccount(Account):
         transfer: Transfer = Transfer.construct()
         if isinstance(to_account, CashAccount):
             transfer = await Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount)
-            await discord_text_channel.send_message(f"--------------------------------------------\n"
-                                                    f"Intra-Account Transfer:\n\n"
+            await discord_text_channel.send_message(f"**Intra-Account Transfer**:\n"
                                                     f"Timestamp: <t:{str(int(time.mktime(datetime.datetime.now().timetuple())))}:T>\n"
-                                                    f"From: {self.currency.value}\n"
-                                                    f"To: {to_account.currency.value}\n"
-                                                    f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
-                                                    f"--------------------------------------------"
+                                                    f"From: *{self.currency.value}*\n"
+                                                    f"To: *{to_account.currency.value}*\n"
+                                                    f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n"
                                                     )
 
         elif isinstance(to_account, ReserveAccount):
             transfer = await Transfer.cash_to_savings_account_transfer(self.profile, self, to_account, amount)
-            await discord_text_channel.send_message(f"--------------------------------------------\n"
-                                                    f"Intra-Account Transfer:\n\n"
+            await discord_text_channel.send_message(f"**Intra-Account Transfer**:\n"
                                                     f"Timestamp: <t:{str(int(time.mktime(datetime.datetime.now().timetuple())))}:T>\n"
-                                                    f"From: {self.currency.value}\n"
-                                                    f"To: {to_account.name}\n"
-                                                    f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
-                                                    f"--------------------------------------------")
+                                                    f"From: *{self.currency.value}*\n"
+                                                    f"To: *{to_account.name}*\n"
+                                                    f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
 
         elif isinstance(to_account, Recipient):
             transfer = await Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount, "" if reference is None else reference)
-            await discord_text_channel.send_message(f"--------------------------------------------\n"
-                                                    f"Third-Party Transfer:\n\n"
+            await discord_text_channel.send_message(f"**Third-Party Transfer**:\n"
                                                     f"Timestamp: <t:{str(int(time.mktime(datetime.datetime.now().timetuple())))}:T>\n"
-                                                    f"From: {self.currency.value}\n"
-                                                    f"To: {to_account.account_holder_name}\n"
-                                                    f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
-                                                    f"--------------------------------------------")
+                                                    f"From: *{self.currency.value}*\n"
+                                                    f"To: *{to_account.account_holder_name}*\n"
+                                                    f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
 
         await self.profile.wise_account.initialize()
         return transfer
@@ -286,13 +280,11 @@ class ReserveAccount(Account):
             raise OperationNotSupportedException("Direct inter-currency transfers from a reserve account is not supported")
 
         transfer: Transfer = await Transfer.savings_to_cash_account_transfer(self.profile, self, to_account, amount)
-        await discord_text_channel.send_message(f"--------------------------------------------\n"
-                                                f"Intra-Account Transfer:\n\n"
-                                                f"Timestamp: <t:{str(int(time.mktime(datetime.datetime.now().timetuple())))}:T>\n"
-                                                f"From: {self.name}\n"
-                                                f"To: {to_account.currency.value}\n"
-                                                f"Amount: {self.currency.value} {'{:,}'.format(amount)}\n"
-                                                f"--------------------------------------------\n")
+        await discord_text_channel.send_message(f"**Intra-Account Transfer**:\n\n"
+                                                f"*Timestamp*: <t:{str(int(time.mktime(datetime.datetime.now().timetuple())))}:T>\n"
+                                                f"*From*: {self.name}\n"
+                                                f"*To*: {to_account.currency.value}\n"
+                                                f"*Amount*: {self.currency.value} {'{:,}'.format(amount)}\n")
 
         await self.profile.wise_account.initialize()
         return transfer

@@ -75,7 +75,8 @@ class DataClass(BaseModel):
 def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:
     value: str | None = os.getenv(environmental_variable.value)
     if value is None:
-        raise ApplicationException(f"Environment variable with the key is not available: {environmental_variable.value}")
+        raise ApplicationException(
+            f"Environment variable with the key is not available: {environmental_variable.value}")
 
     return value
 
@@ -100,6 +101,10 @@ def is_development_environment() -> bool:
     return Environment.Development == get_environment()
 
 
+def get_application_name() -> str:
+    return get_environmental_variable(EnvironmentVariable.APPLICATION_NAME)
+
+
 def threaded(func: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
         thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
@@ -111,12 +116,15 @@ def threaded(func: Callable) -> Callable:
 
 def wait_for_all_coroutines(func: Callable) -> Callable:
     if not inspect.iscoroutinefunction(func):
-        raise SDKClientException(f"Synchronous method used to in asynchronous context: {func.__module__}.{func.__name__}")
+        raise SDKClientException(
+            f"Synchronous method used to in asynchronous context: {func.__module__}.{func.__name__}")
 
     # TODO: Manage Exceptions
     async def wrapper(*args: Any, **kwargs: Any) -> None:
         asyncio.create_task(func(*args, **kwargs))
-        await asyncio.wait(set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())), timeout=600)  # type: ignore[type-var,arg-type,union-attr,attr-defined]
+        await asyncio.wait(
+            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),
+            timeout=600)  # type: ignore[type-var,arg-type,union-attr,attr-defined]
         return None
 
     return wrapper

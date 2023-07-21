@@ -97,7 +97,7 @@ class Server(DiscordModel):
 
     @staticmethod
     def get_default_server_name() -> str:
-        server_name: str = common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_NAME)
+        server_name: str = common.get_application_name()
         return server_name if common.is_production_environment() else f"{server_name} [Dev]"
 
 
