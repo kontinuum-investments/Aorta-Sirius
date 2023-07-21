@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import inspect
 import os
 import threading
@@ -123,9 +124,9 @@ def wait_for_all_coroutines(func: Callable) -> Callable:
     # TODO: Manage Exceptions
     async def wrapper(*args: Any, **kwargs: Any) -> None:
         asyncio.create_task(func(*args, **kwargs))
-        await asyncio.wait(
-            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),
-            timeout=600)  # type: ignore[type-var,arg-type,union-attr,attr-defined]
+        await asyncio.wait( # type: ignore[type-var]
+            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),   # type: ignore[arg-type,union-attr,attr-defined]
+            timeout=600)
         return None
 
     return wrapper
@@ -144,3 +145,6 @@ def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[An
 
 def get_decimal_str(decimal: Decimal) -> str:
     return "{:,.2f}".format(float(decimal))
+
+def get_date_str(timestamp: datetime.datetime) -> str:
+    return ""
