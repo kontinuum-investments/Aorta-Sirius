@@ -9,7 +9,7 @@ from pydantic import PrivateAttr
 
 from sirius import common
 from sirius.common import DataClass, Currency
-from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels
+from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string
 from sirius.constants import EnvironmentVariable
 from sirius.http_requests import HTTPSession, HTTPModel, HTTPResponse
 from sirius.wise import constants
@@ -523,10 +523,6 @@ class DebitCard(DataClass):
             expiry_date=datetime.datetime.fromisoformat(data["expiryDate"]),
             bank_identification_number=data["bankIdentificationNumber"]
         ) for data in response.data["cards"]]
-
-
-def get_timestamp_string(timestamp: datetime.datetime) -> str:
-    return f"<t:{str(int(time.mktime(timestamp.timetuple())))}:T>"
 
 
 WiseAccount.update_forward_refs()
