@@ -5,10 +5,6 @@ class WiseException(SiriusException):
     pass
 
 
-class OperationNotSupportedException(WiseException, SDKClientException):
-    pass
-
-
 class CurrencyNotFoundException(WiseException, SDKClientException):
     pass
 

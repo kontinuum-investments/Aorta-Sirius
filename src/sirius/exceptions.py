@@ -8,3 +8,7 @@ class ApplicationException(SiriusException):
 
 class SDKClientException(SiriusException):
     pass
+
+
+class OperationNotSupportedException(SDKClientException):
+    pass

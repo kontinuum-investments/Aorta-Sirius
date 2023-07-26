@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 import inspect
 import os
 import threading
@@ -10,7 +9,7 @@ from _decimal import Decimal
 from pydantic import BaseModel
 
 from sirius.constants import EnvironmentVariable
-from sirius.exceptions import ApplicationException, SDKClientException
+from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
 
 
 class Environment(Enum):
@@ -145,3 +144,12 @@ def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[An
 
 def get_decimal_str(decimal: Decimal) -> str:
     return "{:,.2f}".format(float(decimal))
+
+
+def only_in_dev(func: Callable) -> Callable:
+    def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
+        if not is_development_environment():
+            raise OperationNotSupportedException("Operation is only permitted in the dev environment")
+        return func(*args, **kwargs)
+
+    return wrapper

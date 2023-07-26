@@ -1,6 +1,7 @@
 import datetime
 import time
 import uuid
+from abc import abstractmethod, ABC
 from enum import Enum, auto
 from typing import List, Dict, Any, Union, cast
 
@@ -14,7 +15,8 @@ from sirius.constants import EnvironmentVariable
 from sirius.http_requests import HTTPSession, HTTPModel, HTTPResponse
 from sirius.wise import constants
 from sirius.wise.exceptions import CurrencyNotFoundException, ReserveAccountNotFoundException, \
-    OperationNotSupportedException, RecipientNotFoundException
+    RecipientNotFoundException
+from sirius.exceptions import OperationNotSupportedException
 
 discord_text_channel: TextChannel = None
 
@@ -30,6 +32,7 @@ class TransactionType(Enum):
     DEPOSIT: str = "DEPOSIT"
     TRANSFER: str = "TRANSFER"
     MONEY_ADDED: str = "MONEY_ADDED"
+    UNKNOWN: str = "UNKNOWN"
 
 
 class WiseAccount(DataClass):
@@ -44,10 +47,20 @@ class WiseAccount(DataClass):
 
     async def initialize(self) -> None:
         profile_list: List[Profile] = await Profile.get_all(self)
-        self.personal_profile = cast(PersonalProfile,
-                                     next(filter(lambda p: p.type.lower() == "personal", profile_list)))
-        self.business_profile = cast(BusinessProfile,
-                                     next(filter(lambda p: p.type.lower() == "business", profile_list)))
+        personal_profile: PersonalProfile = cast(PersonalProfile, next(filter(lambda p: p.type.lower() == "personal", profile_list)))
+        business_profile = cast(BusinessProfile, next(filter(lambda p: p.type.lower() == "business", profile_list)))
+
+        if self.personal_profile is None:
+            self.personal_profile = personal_profile
+        else:
+            self.personal_profile.construct(**personal_profile.dict())
+            self.personal_profile.wise_account = self
+
+        if self.business_profile is None:
+            self.business_profile = business_profile
+        else:
+            self.business_profile.construct(**business_profile.dict())
+            self.business_profile.wise_account = self
 
         global discord_text_channel
         if discord_text_channel is None:
@@ -67,7 +80,7 @@ class WiseAccount(DataClass):
         http_session: HTTPSession = HTTPSession(constants.URL, {
             "Authorization": f"Bearer {common.get_environmental_variable(environmental_variable)}"})
 
-        wise_account: WiseAccount = WiseAccount.construct(type=wise_account_type)
+        wise_account: WiseAccount = WiseAccount.construct(type=wise_account_type, personal_profile=None, business_profile=None)
         wise_account._http_session = http_session
         await wise_account.initialize()
 
@@ -120,22 +133,15 @@ class Profile(DataClass):
 
     @staticmethod
     async def get_all(wise_account: WiseAccount) -> List["Profile"]:
-        profile_list: List[Profile] = await HTTPModel.get_multiple(Profile, wise_account.http_session,
-                                                                   constants.ENDPOINT__PROFILE__GET_ALL)  # type: ignore[assignment]
+        profile_list: List[Profile] = await HTTPModel.get_multiple(Profile, wise_account.http_session, constants.ENDPOINT__PROFILE__GET_ALL)  # type: ignore[assignment]
 
         for profile in profile_list:
             profile.wise_account = wise_account
+            profile.cash_account_list = await CashAccount.get_all(profile)
+            profile.reserve_account_list = await ReserveAccount.get_all(profile)
+            profile.recipient_list = await Recipient.get_all(profile)
 
-        return [Profile(
-            id=profile.id,
-            type=profile.type,
-            cash_account_list=await CashAccount.get_all(profile),
-            reserve_account_list=await ReserveAccount.get_all(profile),
-            recipient_list=await Recipient.get_all(profile),
-            debit_card_list=[],
-            # debit_card_list=await DebitCard.get_all(profile),
-            wise_account=wise_account
-        ) for profile in profile_list]
+        return profile_list
 
 
 class PersonalProfile(Profile):
@@ -204,7 +210,7 @@ class Account(DataClass):
 
     @staticmethod
     async def abstract_open(profile: Profile, account_name: str | None, currency: Currency,
-                            is_reserve_account: bool) -> "Account":
+                                is_reserve_account: bool) -> "Account":
         data = {
             "currency": currency.value,
             "type": "SAVINGS" if is_reserve_account else "STANDARD"
@@ -263,7 +269,8 @@ class CashAccount(Account):
         await self.profile.wise_account.initialize()
         return transfer
 
-    async def simulate_top_up(self, amount: Decimal) -> None:
+    @common.only_in_dev
+    async def _simulate_top_up(self, amount: Decimal) -> None:
         if not common.is_development_environment():
             raise OperationNotSupportedException("Simulations can only be done in a development environment")
 
@@ -273,6 +280,27 @@ class CashAccount(Account):
             "currency": self.currency.value,
             "amount": float(amount)
         })
+        await self.profile.wise_account.initialize()
+
+    @common.only_in_dev
+    async def _set_balance(self, amount: Decimal) -> None:
+        if self.balance > amount:
+            await self._set_maximum_balance(amount)
+        else:
+            await self._set_minimum_balance(amount)
+
+    @common.only_in_dev
+    async def _set_minimum_balance(self, amount: Decimal) -> None:
+        if self.balance <= amount:
+            await self._simulate_top_up(self.balance - amount)
+
+    @common.only_in_dev
+    async def _set_maximum_balance(self, amount: Decimal) -> None:
+        if self.balance <= amount:
+            return
+
+        hkd_account: CashAccount = await self.profile.get_cash_account(common.Currency.HKD, True)
+        await self.transfer(hkd_account, self.balance - amount)
 
     @staticmethod
     async def get_all(profile: Profile) -> List["CashAccount"]:
@@ -307,6 +335,43 @@ class ReserveAccount(Account):
 
         await self.profile.wise_account.initialize()
         return transfer
+
+    @common.only_in_dev
+    async def _simulate_top_up(self, amount: Decimal) -> None:
+        cash_account: CashAccount = await self.profile.get_cash_account(self.currency, True)
+        await cash_account._simulate_top_up(amount)
+        await cash_account.transfer(self, amount)
+        await self.profile.wise_account.initialize()
+        self.balance = (await self.profile.wise_account.personal_profile.get_reserve_account(self.name, self.currency)).balance
+
+    @common.only_in_dev
+    async def _set_balance(self, amount: Decimal) -> None:
+        if self.balance < amount:
+            await self._set_minimum_balance(amount)
+        else:
+            await self._set_maximum_balance(amount)
+
+    @common.only_in_dev
+    async def _set_minimum_balance(self, amount: Decimal) -> None:
+        if self.balance >= amount:
+            return
+
+        amount_to_top_up: Decimal = amount - self.balance
+        cash_account: CashAccount = await self.profile.get_cash_account(self.currency, True)
+        await cash_account._simulate_top_up(amount_to_top_up)
+        await cash_account.transfer(self, amount_to_top_up)
+
+    @common.only_in_dev
+    async def _set_maximum_balance(self, amount: Decimal) -> None:
+        if self.balance <= amount:
+            return
+
+        amount_to_deduct: Decimal = self.balance - amount
+        cash_account: CashAccount = await self.profile.get_cash_account(self.currency, True)
+        hkd_account: CashAccount = await self.profile.get_cash_account(common.Currency.HKD, True)
+
+        await self.transfer(cash_account, amount_to_deduct)
+        await cash_account.transfer(hkd_account, amount_to_deduct)
 
     @staticmethod
     async def get_all(profile: Profile) -> List["ReserveAccount"]:
