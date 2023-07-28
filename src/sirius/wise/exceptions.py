@@ -5,7 +5,7 @@ class WiseException(SiriusException):
     pass
 
 
-class CurrencyNotFoundException(WiseException, SDKClientException):
+class CashAccountNotFoundException(WiseException, SDKClientException):
     pass
 
 

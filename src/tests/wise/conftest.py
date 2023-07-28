@@ -6,7 +6,7 @@ import pytest_asyncio
 from _decimal import Decimal
 
 from sirius.common import Currency
-from sirius.wise import WiseAccount, WiseAccountType, ReserveAccount, CashAccount
+from sirius.wise import WiseAccount, WiseAccountType, ReserveAccount
 
 
 @pytest.fixture(scope="session")
@@ -17,11 +17,15 @@ def event_loop() -> AbstractEventLoop:
 @pytest_asyncio.fixture(autouse=True, scope="session")
 async def initialize_balances() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
-    await wise_account.personal_profile._populate_cash_accounts()
-    await wise_account.personal_profile._populate_reserve_accounts()
-
-    for cash_account in wise_account.personal_profile.cash_account_list:
+    for cash_account in list(filter(lambda c: (c.currency != Currency.HKD), wise_account.personal_profile.cash_account_list)):
         await cash_account._set_minimum_balance(Decimal("1000"))
 
     test_reserve_account: ReserveAccount = await wise_account.personal_profile.get_reserve_account("Test", Currency.NZD)
     await test_reserve_account._set_minimum_balance(Decimal("100"))
+
+
+@pytest_asyncio.fixture(autouse=True, scope="session")
+async def complete_all_transfer() -> None:
+    wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+    await wise_account.personal_profile._complete_all_transfers()
+    await wise_account.business_profile._complete_all_transfers()

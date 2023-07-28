@@ -11,9 +11,12 @@ ENDPOINT__BALANCE__CLOSE: str = f"{URL}/v3/profiles/$profileId/balances/$balance
 ENDPOINT__BALANCE__GET_TRANSACTIONS: str = f"{URL}/v1/profiles/$profileId/balance-statements/$balanceId/statement.json"
 ENDPOINT__TRANSFER__CREATE_THIRD_PARTY_TRANSFER: str = f"{URL}/v1/transfers"
 ENDPOINT__TRANSFER__FUND_THIRD_PARTY_TRANSFER: str = f"{URL}/v3/profiles/$profileId/transfers/$transferId/payments"
+ENDPOINT__TRANSFER__GET_ALL: str = f"{URL}/v1/transfers??profile=$profileId"
 ENDPOINT__DEBIT_CARD__GET_ALL: str = f"{URL}/v3/spend/profiles/$profileId/cards"
 
 ENDPOINT__QUOTE__GET: str = f"{URL}/v3/profiles/$profileId/quotes"
 ENDPOINT__INTRA_ACCOUNT_TRANSFER__CREATE: str = f"{URL}/v2/profiles/$profileId/balance-movements"
 ENDPOINT__RECIPIENT__GET_ALL: str = f"{URL}/v1/accounts?profile=$profileId"
+
 ENDPOINT__SIMULATION__TOP_UP: str = f"{URL}/v1/simulation/balance/topup"
+ENDPOINT__SIMULATION__COMPLETE_TRANSFER: str = f"{URL}/v1/simulation/transfers/$transferId/$status"

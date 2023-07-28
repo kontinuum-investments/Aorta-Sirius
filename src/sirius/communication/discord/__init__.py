@@ -137,13 +137,13 @@ class TextChannel(Channel):
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Text Channels")
     async def get_all(cls, server: Server) -> List["TextChannel"]:
         channel_list: List[Channel] = list(filter(lambda c: c.type == 0, await Channel.get_all_channels(server)))
-        return [TextChannel(**channel.dict()) for channel in channel_list]
+        return [TextChannel(**channel.model_dump()) for channel in channel_list]
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create a Text Channel")
     async def create(cls, text_channel_name: str, server: Server, type_id: int = 0) -> "TextChannel":
         channel: Channel = await Channel.create(text_channel_name, server, type_id)
-        return TextChannel(**channel.dict())
+        return TextChannel(**channel.model_dump())
 
     @staticmethod
     async def get_text_channel_from_default_bot_and_server(text_channel_name: str) -> "TextChannel":
