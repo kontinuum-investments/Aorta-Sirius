@@ -24,6 +24,7 @@ jobs:
         run: mypy . --install-types --non-interactive
 
       - name: Running Tests
+        shell: bash
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           SENTRY_URL: ${{ secrets.SENTRY_URL }}
