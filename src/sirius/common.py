@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Callable, Any, Dict
 
 from _decimal import Decimal
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
@@ -69,8 +69,7 @@ class Currency(Enum):
 
 
 class DataClass(BaseModel):
-    class Config:
-        arbitrary_types_allowed: bool = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:

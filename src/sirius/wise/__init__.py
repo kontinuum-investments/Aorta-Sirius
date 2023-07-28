@@ -402,7 +402,9 @@ class ReserveAccount(Account):
 
     @common.only_in_dev
     async def _set_balance(self, amount: Decimal) -> None:
-        if self.balance < amount:
+        if self.balance == amount:
+            return
+        elif self.balance < amount:
             await self._set_minimum_balance(amount)
         else:
             await self._set_maximum_balance(amount)
@@ -653,10 +655,10 @@ class DebitCard(DataClass):
         ) for data in response.data["cards"]]
 
 
-WiseAccount.update_forward_refs()
-Profile.update_forward_refs()
-PersonalProfile.update_forward_refs()
-BusinessProfile.update_forward_refs()
-Account.update_forward_refs()
-DebitCard.update_forward_refs()
-Transaction.update_forward_refs()
+WiseAccount.model_rebuild()
+Profile.model_rebuild()
+PersonalProfile.model_rebuild()
+BusinessProfile.model_rebuild()
+Account.model_rebuild()
+DebitCard.model_rebuild()
+Transaction.model_rebuild()

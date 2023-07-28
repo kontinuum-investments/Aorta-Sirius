@@ -23,6 +23,14 @@ jobs:
       - name: Running MyPy check
         run: mypy . --install-types --non-interactive
 
+      - name: Running Tests
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          SENTRY_URL: ${{ secrets.SENTRY_URL }}
+          WISE_SANDBOX_ACCOUNT_API_KEY: ${{ secrets.WISE_SANDBOX_ACCOUNT_API_KEY }}
+          APPLICATION_NAME: ${{ env.APPLICATION_NAME }}
+        run: pytest .
+
       - name: Packaging the SDK
         run: python3 setup.py sdist
 
