@@ -1,5 +1,5 @@
-import time
 import datetime
+import time
 from enum import Enum
 from logging import Logger
 from typing import List, Dict, Any
@@ -62,8 +62,7 @@ class Bot(DiscordModel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get Bot")
     async def get(cls) -> "Bot":
-        return await HTTPModel.get_one(cls, cls._http_session,
-                                       constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value]
+        return await HTTPModel.get_one(cls, cls._http_session, constants.ENDPOINT__BOT__GET_BOT)  # type: ignore[return-value]
 
 
 class Server(DiscordModel):
@@ -98,8 +97,7 @@ class Server(DiscordModel):
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Servers")
     async def get_all_servers(cls) -> List["Server"]:
-        return await HTTPModel.get_multiple(cls, cls._http_session,
-                                            constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value]
+        return await HTTPModel.get_multiple(cls, cls._http_session, constants.ENDPOINT__SERVER__GET_ALL_SERVERS)  # type: ignore[return-value]
 
     @staticmethod
     def get_default_server_name() -> str:
@@ -139,8 +137,7 @@ class TextChannel(Channel):
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Send Message")
     async def send_message(self, message: str) -> "Message":
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
-        return await HTTPModel.post_return_one(Message, self._http_session, url,
-                                               data={"content": message})  # type: ignore[return-value]
+        return await HTTPModel.post_return_one(Message, self._http_session, url, data={"content": message})  # type: ignore[return-value]
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Text Channels")
