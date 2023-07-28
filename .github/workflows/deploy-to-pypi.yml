@@ -29,7 +29,7 @@ jobs:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           SENTRY_URL: ${{ secrets.SENTRY_URL }}
           WISE_SANDBOX_ACCOUNT_API_KEY: ${{ secrets.WISE_SANDBOX_ACCOUNT_API_KEY }}
-          APPLICATION_NAME: ${{ env.APPLICATION_NAME }}
+          APPLICATION_NAME: ${{ vars.APPLICATION_NAME }}
         run: pytest .
 
       - name: Packaging the SDK
