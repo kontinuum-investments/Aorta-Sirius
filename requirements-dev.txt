@@ -4,4 +4,5 @@ mypy
 requests
 pytest
 pytest_asyncio
+pytest-cov
 coverage
