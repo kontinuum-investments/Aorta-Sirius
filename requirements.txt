@@ -1,4 +1,5 @@
 sentry-sdk
 motor
+pydantic
 beanie
 httpx
