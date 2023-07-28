@@ -1,5 +1,4 @@
 import datetime
-import time
 import uuid
 from enum import Enum, auto
 from typing import List, Dict, Any, Union, cast
@@ -11,12 +10,12 @@ from sirius import common
 from sirius.common import DataClass, Currency
 from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string
 from sirius.constants import EnvironmentVariable
-from sirius.http_requests import HTTPSession, HTTPModel, HTTPResponse
+from sirius.http_requests import HTTPSession, HTTPResponse
 from sirius.wise import constants
 from sirius.wise.exceptions import CurrencyNotFoundException, ReserveAccountNotFoundException, \
     OperationNotSupportedException, RecipientNotFoundException
 
-discord_text_channel: TextChannel = None
+discord_text_channel: TextChannel | None = None
 
 
 class WiseAccountType(Enum):
@@ -30,6 +29,7 @@ class TransactionType(Enum):
     DEPOSIT: str = "DEPOSIT"
     TRANSFER: str = "TRANSFER"
     MONEY_ADDED: str = "MONEY_ADDED"
+    UNKNOWN: str = "UNKNOWN"
 
 
 class WiseAccount(DataClass):
@@ -77,17 +77,30 @@ class WiseAccount(DataClass):
 class Profile(DataClass):
     id: int
     type: str
-    cash_account_list: List["CashAccount"] | None
-    reserve_account_list: List["ReserveAccount"] | None
-    recipient_list: List["Recipient"] | None
-    debit_card_list: List["DebitCard"] | None
-    wise_account: WiseAccount | None
+    cash_account_list: List["CashAccount"] | None = None
+    reserve_account_list: List["ReserveAccount"] | None = None
+    recipient_list: List["Recipient"] | None = None
+    debit_card_list: List["DebitCard"] | None = None
+    wise_account: WiseAccount
 
     @property
     def http_session(self) -> HTTPSession:
         return self.wise_account.http_session
 
+    async def _populate_cash_accounts(self) -> None:
+        if self.cash_account_list is None:
+            self.cash_account_list = await CashAccount.get_all(self)
+
+    async def _populate_reserve_accounts(self) -> None:
+        if self.reserve_account_list is None:
+            self.reserve_account_list = await ReserveAccount.get_all(self)
+
+    async def _populate_recipients(self) -> None:
+        if self.recipient_list is None:
+            self.recipient_list = await Recipient.get_all(self)
+
     async def get_cash_account(self, currency: Currency, is_create_if_unavailable: bool = False) -> "CashAccount":
+        await self._populate_cash_accounts()
         try:
             return next(filter(lambda c: c.currency == currency, self.cash_account_list))
         except StopIteration:
@@ -98,8 +111,9 @@ class Profile(DataClass):
                                                 f"Profile: {self.__class__.__name__}"
                                                 f"Currency: {currency.value}")
 
-    async def get_reserve_account(self, account_name: str, currency: Currency,
-                                  is_create_if_unavailable: bool = False) -> "ReserveAccount":
+    async def get_reserve_account(self, account_name: str, currency: Currency, is_create_if_unavailable: bool = False) -> "ReserveAccount":
+        await self._populate_reserve_accounts()
+
         try:
             return next(filter(lambda r: r.name == account_name and r.currency == currency, self.reserve_account_list))
         except StopIteration:
@@ -110,7 +124,9 @@ class Profile(DataClass):
                                                       f"Profile: {self.__class__.__name__}"
                                                       f"Reserve Account Name: {account_name}")
 
-    def get_recipient(self, account_number: str) -> "Recipient":
+    async def get_recipient(self, account_number: str) -> "Recipient":
+        await self._populate_recipients()
+
         try:
             return next(filter(lambda r: r.account_number == account_number, self.recipient_list))
         except StopIteration:
@@ -120,22 +136,12 @@ class Profile(DataClass):
 
     @staticmethod
     async def get_all(wise_account: WiseAccount) -> List["Profile"]:
-        profile_list: List[Profile] = await HTTPModel.get_multiple(Profile, wise_account.http_session,
-                                                                   constants.ENDPOINT__PROFILE__GET_ALL)  # type: ignore[assignment]
-
-        for profile in profile_list:
-            profile.wise_account = wise_account
-
+        http_response: HTTPResponse = await wise_account.http_session.get(constants.ENDPOINT__PROFILE__GET_ALL)
         return [Profile(
-            id=profile.id,
-            type=profile.type,
-            cash_account_list=await CashAccount.get_all(profile),
-            reserve_account_list=await ReserveAccount.get_all(profile),
-            recipient_list=await Recipient.get_all(profile),
-            debit_card_list=[],
-            # debit_card_list=await DebitCard.get_all(profile),
+            id=data["id"],
+            type=data["type"],
             wise_account=wise_account
-        ) for profile in profile_list]
+        ) for data in http_response.data]
 
 
 class PersonalProfile(Profile):
