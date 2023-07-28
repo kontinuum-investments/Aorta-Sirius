@@ -93,7 +93,7 @@ async def test_cash_to_same_currency_savings_account_transfer() -> None:
 async def test_cash_to_same_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     usd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.USD)
-    recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
+    recipient: Recipient = await wise_account.personal_profile.get_recipient("633736902")
     transfer: Transfer = await usd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
 
@@ -102,7 +102,7 @@ async def test_cash_to_same_currency_third_party_transfer() -> None:
 async def test_cash_to_different_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     nzd_account: CashAccount = await wise_account.personal_profile.get_cash_account(Currency.NZD)
-    recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
+    recipient: Recipient = await wise_account.personal_profile.get_recipient("633736902")
     transfer: Transfer = await nzd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
 
@@ -143,7 +143,7 @@ async def test_cash_account_to_different_currency_reserve_account_transfer() -> 
 async def test_get_invalid_recipient() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
     with pytest.raises(RecipientNotFoundException):
-        wise_account.personal_profile.get_recipient("A")
+        await wise_account.personal_profile.get_recipient("A")
 
 
 #

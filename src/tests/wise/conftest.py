@@ -17,6 +17,9 @@ def event_loop() -> AbstractEventLoop:
 @pytest_asyncio.fixture(autouse=True, scope="session")
 async def initialize_balances() -> None:
     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
+    await wise_account.personal_profile._populate_cash_accounts()
+    await wise_account.personal_profile._populate_reserve_accounts()
+
     for cash_account in wise_account.personal_profile.cash_account_list:
         await cash_account._set_minimum_balance(Decimal("1000"))
 
