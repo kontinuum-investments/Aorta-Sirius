@@ -337,7 +337,7 @@ class CashAccount(Account):
 
     @common.only_in_dev
     async def _set_minimum_balance(self, amount: Decimal) -> None:
-        if self.balance <= amount:
+        if self.balance < amount:
             await self._simulate_top_up(amount - self.balance)
 
     @common.only_in_dev
