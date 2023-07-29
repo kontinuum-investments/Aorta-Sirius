@@ -1,4 +1,5 @@
 import asyncio
+from typing import Generator
 
 import pytest
 from _decimal import Decimal
@@ -7,7 +8,7 @@ from sirius.wise import WiseAccount, WiseAccountType
 
 
 @pytest.fixture(scope="session")
-def event_loop():
+def event_loop() -> Generator:
     policy = asyncio.get_event_loop_policy()
     loop = policy.new_event_loop()
     yield loop
