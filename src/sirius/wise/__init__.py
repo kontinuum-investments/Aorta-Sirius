@@ -277,13 +277,13 @@ class CashAccount(Account):
         await self.http_session.get(url.replace("$status", "funds_converted"))
         await self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
 
-    async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal, reference: str | None = None) -> "Transfer":
+    async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal, reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
         if isinstance(to_account, ReserveAccount) and self.currency != to_account.currency:
             raise OperationNotSupportedException("Direct inter-currency transfers from a cash account to a reserve account is not supported")
 
         transfer: Transfer = Transfer.model_construct()
         if isinstance(to_account, CashAccount):
-            transfer = await Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount)
+            transfer = await Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount, is_amount_in_from_currency)
             await discord_text_channel.send_message(f"**Intra-Account Transfer**:\n"
                                                     f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                                     f"From: *{self.currency.value}*\n"
@@ -300,8 +300,7 @@ class CashAccount(Account):
                                                     f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
 
         elif isinstance(to_account, Recipient):
-            transfer = await Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount,
-                                                                                "" if reference is None else reference)
+            transfer = await Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount, "" if reference is None else reference, is_amount_in_from_currency)
             await discord_text_channel.send_message(f"**Third-Party Transfer**:\n"
                                                     f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                                     f"From: *{self.currency.value}*\n"
@@ -353,8 +352,7 @@ class CashAccount(Account):
             await self.transfer(hkd_account, maximum_transfer_amount)
             await self._set_maximum_balance(amount)
         else:
-            quote: Quote = await Quote.get_quote(self.profile, self, hkd_account, amount_to_deduct, True)
-            await self.transfer(hkd_account, quote.to_amount)
+            await self.transfer(hkd_account, amount_to_deduct, is_amount_in_from_currency=True)
 
     @staticmethod
     async def get_all(profile: Profile) -> List["CashAccount"]:
@@ -498,8 +496,7 @@ class Quote(DataClass):
                 "payOut": "BALANCE",
             })
 
-        payment_option: Dict[str, Any] = next(
-            filter(lambda p: p["payIn"] == "BALANCE", response.data["paymentOptions"]))
+        payment_option: Dict[str, Any] = next(filter(lambda p: p["payIn"] == "BALANCE", response.data["paymentOptions"]))
         return Quote(
             id=response.data["id"],
             from_currency=Currency(payment_option["sourceCurrency"]),
@@ -530,8 +527,8 @@ class Transfer(DataClass):
     transfer_type: TransferType
 
     @staticmethod
-    async def intra_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: CashAccount, amount: Decimal) -> "Transfer":
-        quote: Quote = await Quote.get_quote(profile, from_account, to_account, amount)
+    async def intra_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: CashAccount, amount: Decimal, is_amount_in_from_currency: bool = False) -> "Transfer":
+        quote: Quote = await Quote.get_quote(profile, from_account, to_account, amount, is_amount_in_from_currency)
         response: HTTPResponse = await profile.http_session.post(
             constants.ENDPOINT__BALANCE__MOVE_MONEY_BETWEEN_BALANCES.replace("$profileId", str(profile.id)),
             data={"quoteId": quote.id},
@@ -579,10 +576,8 @@ class Transfer(DataClass):
         )
 
     @staticmethod
-    async def cash_to_third_party_cash_account_transfer(profile: Profile, from_account: CashAccount,
-                                                        to_account: Recipient, amount: Decimal,
-                                                        reference: str | None = None) -> "Transfer":
-        quote: Quote = await Quote.get_quote(profile, from_account, to_account, amount)
+    async def cash_to_third_party_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: Recipient, amount: Decimal, reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
+        quote: Quote = await Quote.get_quote(profile, from_account, to_account, amount, is_amount_in_from_currency)
         data: Dict[str, Any] = {
             "targetAccount": to_account.id,
             "quoteUuid": quote.id,
