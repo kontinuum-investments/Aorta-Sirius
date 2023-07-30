@@ -1,16 +1,12 @@
 import asyncio
-from typing import Generator
+from asyncio import AbstractEventLoop
 
 import pytest
 
 
 @pytest.fixture(scope="session")
-def event_loop() -> Generator:
-    policy = asyncio.get_event_loop_policy()
-    loop = policy.new_event_loop()
-    yield loop
-    # loop.run_until_complete(clean_up_sandbox_environment())
-    loop.close()
+def event_loop() -> AbstractEventLoop:
+    return asyncio.get_event_loop()
 
 # async def clean_up_sandbox_environment() -> None:
 #     wise_account: WiseAccount = await WiseAccount.get(WiseAccountType.PRIMARY)
