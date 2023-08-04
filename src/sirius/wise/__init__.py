@@ -3,7 +3,7 @@ import uuid
 from enum import Enum, auto
 from typing import List, Dict, Any, Union, cast
 
-from _decimal import Decimal
+from _decimal import Decimal, ROUND_HALF_UP
 from pydantic import PrivateAttr, Field
 
 from sirius import common
@@ -278,6 +278,8 @@ class CashAccount(Account):
         await self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
 
     async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal, reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
+        amount = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
         if isinstance(to_account, ReserveAccount) and self.currency != to_account.currency:
             raise OperationNotSupportedException("Direct inter-currency transfers from a cash account to a reserve account is not supported")
 
@@ -316,6 +318,7 @@ class CashAccount(Account):
 
     @common.only_in_dev
     async def _simulate_top_up(self, amount: Decimal) -> None:
+        amount = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         if not common.is_development_environment():
             raise OperationNotSupportedException("Simulations can only be done in a development environment")
 
@@ -375,7 +378,9 @@ class CashAccount(Account):
 
 class ReserveAccount(Account):
 
-    async def transfer(self, to_account: "CashAccount", amount: Decimal, reference: str | None = None) -> "Transfer":
+    async def transfer(self, to_account: "CashAccount", amount: Decimal) -> "Transfer":
+        amount = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
         if self.currency != to_account.currency:
             raise OperationNotSupportedException(
                 "Direct inter-currency transfers from a reserve account is not supported")
@@ -392,6 +397,7 @@ class ReserveAccount(Account):
 
     @common.only_in_dev
     async def _simulate_top_up(self, amount: Decimal) -> None:
+        amount = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
         cash_account: CashAccount = await self.profile.get_cash_account(self.currency, True)
         await cash_account._simulate_top_up(amount)
         await cash_account.transfer(self, amount)
