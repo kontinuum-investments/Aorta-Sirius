@@ -11,7 +11,7 @@ from sirius.common import DataClass, Currency
 from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
-from sirius.http_requests import HTTPSession, HTTPResponse
+from sirius.http_requests import AsyncHTTPSession, HTTPResponse
 from sirius.wise import constants
 from sirius.wise.exceptions import CashAccountNotFoundException, ReserveAccountNotFoundException, \
     RecipientNotFoundException
@@ -37,10 +37,10 @@ class WiseAccount(DataClass):
     type: WiseAccountType
     personal_profile: "PersonalProfile"
     business_profile: "BusinessProfile"
-    _http_session: HTTPSession = PrivateAttr()
+    _http_session: AsyncHTTPSession = PrivateAttr()
 
     @property
-    def http_session(self) -> HTTPSession:
+    def http_session(self) -> AsyncHTTPSession:
         return self._http_session
 
     async def _initialize(self) -> None:
@@ -70,7 +70,7 @@ class WiseAccount(DataClass):
         else:
             environmental_variable = EnvironmentVariable.WISE_SANDBOX_ACCOUNT_API_KEY
 
-        http_session: HTTPSession = HTTPSession(constants.URL, {
+        http_session: AsyncHTTPSession = AsyncHTTPSession(constants.URL, {
             "Authorization": f"Bearer {common.get_environmental_variable(environmental_variable)}"})
 
         wise_account: WiseAccount = WiseAccount.model_construct(type=wise_account_type, personal_profile=None, business_profile=None)
@@ -91,7 +91,7 @@ class Profile(DataClass):
     wise_account: WiseAccount = Field(exclude=True)
 
     @property
-    def http_session(self) -> HTTPSession:
+    def http_session(self) -> AsyncHTTPSession:
         return self.wise_account.http_session
 
     async def _initialize(self) -> None:
@@ -206,7 +206,7 @@ class Account(DataClass):
     profile: Profile = Field(exclude=True)
 
     @property
-    def http_session(self) -> HTTPSession:
+    def http_session(self) -> AsyncHTTPSession:
         return self.profile.http_session
 
     async def close(self) -> None:
@@ -466,7 +466,7 @@ class Recipient(DataClass):
     currency: Currency
     is_self_owned: bool
     account_number: str
-    _http_session: HTTPSession = PrivateAttr()
+    _http_session: AsyncHTTPSession = PrivateAttr()
 
     @staticmethod
     async def get_all(profile: Profile) -> List["Recipient"]:

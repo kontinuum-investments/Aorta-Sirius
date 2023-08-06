@@ -37,14 +37,14 @@ class HTTPResponse:
         super().__init__(*args, **kwargs)
 
 
-class HTTPSession:
-    _instance_list: List["HTTPSession"] = []
+class AsyncHTTPSession:
+    _instance_list: List["AsyncHTTPSession"] = []
     client: AsyncClient
     host: str
 
-    def __new__(cls, url_str: str, headers: Dict[str, Any] | None = None) -> "HTTPSession":
+    def __new__(cls, url_str: str, headers: Dict[str, Any] | None = None) -> "AsyncHTTPSession":
         host: str = URL(url_str).host
-        instance: HTTPSession | None = None
+        instance: AsyncHTTPSession | None = None
 
         for i in cls._instance_list:
             if i.host == host and (headers is None or common.is_dict_include_another_dict(cast(Dict[str, Any], headers), dict(i.client.headers))):
@@ -86,7 +86,7 @@ class HTTPSession:
     async def get(self, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.get(url, params=query_params, headers=headers))
         if not http_response.is_successful:
-            HTTPSession.raise_http_exception(http_response)
+            AsyncHTTPSession.raise_http_exception(http_response)
 
         return http_response
 
@@ -94,7 +94,7 @@ class HTTPSession:
     async def put(self, url: str, data: Dict[str, Any], headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data, headers=headers))
         if not http_response.is_successful:
-            HTTPSession.raise_http_exception(http_response)
+            AsyncHTTPSession.raise_http_exception(http_response)
 
         return http_response
 
@@ -110,7 +110,7 @@ class HTTPSession:
 
         http_response: HTTPResponse = HTTPResponse(await self.client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
         if not http_response.is_successful:
-            HTTPSession.raise_http_exception(http_response)
+            AsyncHTTPSession.raise_http_exception(http_response)
 
         return http_response
 
@@ -118,7 +118,7 @@ class HTTPSession:
     async def delete(self, url: str, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.delete(url, headers=headers))
         if not http_response.is_successful:
-            HTTPSession.raise_http_exception(http_response)
+            AsyncHTTPSession.raise_http_exception(http_response)
 
         return http_response
 
@@ -130,9 +130,9 @@ class HTTPModel(DataClass):
         super().__init__(**data)
 
     @staticmethod
-    async def get_one(cls: type, url: str, query_params: Dict[str, Any] | None = None, http_session: HTTPSession | None = None) -> DataClass:
+    async def get_one(cls: type, url: str, query_params: Dict[str, Any] | None = None, http_session: AsyncHTTPSession | None = None) -> DataClass:
         if http_session is None:
-            http_session = HTTPSession(url)
+            http_session = AsyncHTTPSession(url)
 
         if not issubclass(cls, BaseModel):
             raise ServerSideException(f"{cls.__name__} is not a Pydantic subclass")
@@ -141,9 +141,9 @@ class HTTPModel(DataClass):
         return cls(**response.data)  # type: ignore[return-value]
 
     @staticmethod
-    async def get_multiple(cls: type, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None, http_session: HTTPSession | None = None) -> List[DataClass]:
+    async def get_multiple(cls: type, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None, http_session: AsyncHTTPSession | None = None) -> List[DataClass]:
         if http_session is None:
-            http_session = HTTPSession(url)
+            http_session = AsyncHTTPSession(url)
 
         if not issubclass(cls, BaseModel):
             raise ServerSideException(f"{cls.__name__} is not a Pydantic subclass")
@@ -152,9 +152,9 @@ class HTTPModel(DataClass):
         return [cls(**data) for data in response.data]  # type: ignore[misc]
 
     @staticmethod
-    async def post_return_one(cls: type, url: str, data: Dict[Any, Any] | None = None, headers: Dict[str, Any] | None = None, http_session: HTTPSession | None = None) -> DataClass:
+    async def post_return_one(cls: type, url: str, data: Dict[Any, Any] | None = None, headers: Dict[str, Any] | None = None, http_session: AsyncHTTPSession | None = None) -> DataClass:
         if http_session is None:
-            http_session = HTTPSession(url)
+            http_session = AsyncHTTPSession(url)
 
         if not issubclass(cls, BaseModel):
             raise ServerSideException(f"{cls.__name__} is not a Pydantic subclass")

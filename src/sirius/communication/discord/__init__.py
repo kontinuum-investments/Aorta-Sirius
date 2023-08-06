@@ -10,10 +10,10 @@ from sirius.common import DataClass
 from sirius.communication.discord import constants
 from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException
 from sirius.constants import EnvironmentVariable
-from sirius.http_requests import HTTPModel, HTTPSession
+from sirius.http_requests import HTTPModel, AsyncHTTPSession
 
 logger: Logger = application_performance_monitoring.get_logger()
-HTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
+AsyncHTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
 
 
 class ServerName(Enum):
