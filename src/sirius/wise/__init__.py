@@ -17,6 +17,26 @@ from sirius.wise.exceptions import CashAccountNotFoundException, ReserveAccountN
     RecipientNotFoundException
 
 
+class WiseAccountType(Enum):
+    PRIMARY = auto()
+    SECONDARY = auto()
+
+
+class TransactionType(Enum):
+    CARD: str = "CARD"
+    CONVERSION: str = "CONVERSION"
+    DEPOSIT: str = "DEPOSIT"
+    TRANSFER: str = "TRANSFER"
+    MONEY_ADDED: str = "MONEY_ADDED"
+    UNKNOWN: str = "UNKNOWN"
+
+
+class WebhookAccountUpdateType(Enum):
+    CREDIT: str = "balances#credit"
+    UPDATE: str = "balances#update"
+    STATE_CHANGE: str = "balances#account-state-change"
+
+
 class Discord:
     bot: Bot | None = None
     server: Server | None = None
@@ -35,20 +55,6 @@ class Discord:
     @classmethod
     async def notify(cls, message: str) -> None:
         await (await Discord.get_notification_channel()).send_message(message)
-
-
-class WiseAccountType(Enum):
-    PRIMARY = auto()
-    SECONDARY = auto()
-
-
-class TransactionType(Enum):
-    CARD: str = "CARD"
-    CONVERSION: str = "CONVERSION"
-    DEPOSIT: str = "DEPOSIT"
-    TRANSFER: str = "TRANSFER"
-    MONEY_ADDED: str = "MONEY_ADDED"
-    UNKNOWN: str = "UNKNOWN"
 
 
 class WiseAccount(DataClass):
