@@ -27,12 +27,16 @@ async def test_cash_account_simulate_top_up() -> None:
 @pytest.mark.asyncio
 async def test_reserve_account_simulate_top_up() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
+    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
     reserve_account: ReserveAccount = wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
+    await nzd_account._set_balance(Decimal("0"))
 
     starting_balance: Decimal = reserve_account.balance
     top_up_amount: Decimal = Decimal("1")
+
     await reserve_account._simulate_top_up(top_up_amount)
     assert reserve_account.balance == starting_balance + top_up_amount
+    assert nzd_account.balance == Decimal("0")
 
 
 @pytest.mark.asyncio
@@ -47,10 +51,15 @@ async def test_cash_account_set_maximum_balance() -> None:
 @pytest.mark.asyncio
 async def test_reserve_account_set_maximum_balance() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
+    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
     reserve_account: ReserveAccount = wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
+
+    await nzd_account._set_balance(Decimal("0"))
     await reserve_account._simulate_top_up(Decimal("1001"))
     await reserve_account._set_maximum_balance(Decimal("1000"))
+
     assert reserve_account.balance == Decimal("1000")
+    assert nzd_account.balance == Decimal("0")
 
 
 @pytest.mark.asyncio
@@ -71,14 +80,17 @@ async def test_cash_account_set_minimum_balance() -> None:
 @pytest.mark.asyncio
 async def test_reserve_account_set_minimum_balance() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
+    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
     reserve_account: ReserveAccount = wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
 
+    await nzd_account._set_balance(Decimal("0"))
     if reserve_account.balance > Decimal("0"):
         nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
         await reserve_account.transfer(nzd_account, reserve_account.balance)
 
     await reserve_account._set_minimum_balance(Decimal("1000"))
     assert reserve_account.balance == Decimal("1000")
+    assert nzd_account.balance == Decimal("0")
 
 
 @pytest.mark.asyncio

@@ -451,7 +451,7 @@ class ReserveAccount(Account):
             self._set_maximum_balance(amount)
         else:
             quote: Quote = Quote.get_quote(self.profile, cash_account, hkd_account, amount_to_deduct, True)
-            await cash_account.transfer(hkd_account, quote.from_amount)
+            await cash_account.transfer(hkd_account, quote.from_amount, is_amount_in_from_currency=True)
 
     @staticmethod
     def get_all(profile: Profile) -> List["ReserveAccount"]:
