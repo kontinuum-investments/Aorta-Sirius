@@ -83,10 +83,10 @@ async def test_reserve_account_set_minimum_balance() -> None:
     nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
     reserve_account: ReserveAccount = wise_account.personal_profile.get_reserve_account("Test", Currency.NZD, True)
 
-    await nzd_account._set_balance(Decimal("0"))
     if reserve_account.balance > Decimal("0"):
         await reserve_account.transfer(nzd_account, reserve_account.balance)
 
+    await nzd_account._set_balance(Decimal("0"))
     await reserve_account._set_minimum_balance(Decimal("1000"))
     assert reserve_account.balance == Decimal("1000")
     assert nzd_account.balance == Decimal("0")
