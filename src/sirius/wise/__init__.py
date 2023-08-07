@@ -404,7 +404,7 @@ class ReserveAccount(Account):
                 "Direct inter-currency transfers from a reserve account is not supported")
 
         transfer: Transfer = Transfer.savings_to_cash_account_transfer(self.profile, self, to_account, amount)
-        await Discord.notify(f"**Intra-Account Transfer**:\n\n"
+        await Discord.notify(f"**Intra-Account Transfer**:\n"
                              f"*Timestamp*: {get_timestamp_string(datetime.datetime.now())}\n"
                              f"*From*: {self.name}\n"
                              f"*To*: {to_account.currency.value}\n"
