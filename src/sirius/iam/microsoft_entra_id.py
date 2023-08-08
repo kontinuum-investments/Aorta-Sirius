@@ -60,7 +60,7 @@ class MicrosoftIdentityToken(BaseModel):
         flow, authentication_flow = MicrosoftIdentityToken._get_flow(public_client_application, scopes)
 
         await notification_text_channel.send_message(f"**Authentication Request**:\n"
-                                                     f"Application Name: {application_name}\n"
+                                                     f"Application Name: *{application_name}*\n"
                                                      f"User Code: *{authentication_flow.user_code}*\n"
                                                      f"Verification URI: *{authentication_flow.verification_uri}*\n"
                                                      f"Message: *{authentication_flow.message}*\n")
