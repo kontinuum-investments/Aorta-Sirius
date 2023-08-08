@@ -6,7 +6,7 @@ from msal import PublicClientApplication
 from pydantic import BaseModel
 
 from sirius import common
-from sirius.communication.discord import TextChannel, AortaTextChannels
+from sirius.communication.discord import TextChannel
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
 
@@ -50,15 +50,7 @@ class MicrosoftIdentityToken(BaseModel):
         )
 
     @staticmethod
-    async def _notify_authentication_procedure(authentication_flow: AuthenticationFlow) -> None:
-        text_channel: TextChannel = await TextChannel.get_text_channel_from_default_bot_and_server(AortaTextChannels.BETELGEUSE.value)
-        await text_channel.send_message(f"**Authentication Request**:\n"
-                                        f"User Code: *{authentication_flow.user_code}*\n"
-                                        f"Verification URI: *{authentication_flow.verification_uri}*\n"
-                                        f"Message: *{authentication_flow.message}*\n")
-
-    @staticmethod
-    async def get_token(scopes: List[str], client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentityToken":
+    async def get_token(scopes: List[str], notification_text_channel: TextChannel, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentityToken":
         client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
         public_client_application: PublicClientApplication = PublicClientApplication(client_id, authority=f"https://login.microsoftonline.com/{tenant_id}")
@@ -66,7 +58,11 @@ class MicrosoftIdentityToken(BaseModel):
         flow: Dict[str, Any]
         authentication_flow: AuthenticationFlow
         flow, authentication_flow = MicrosoftIdentityToken._get_flow(public_client_application, scopes)
-        await MicrosoftIdentityToken._notify_authentication_procedure(authentication_flow)
+
+        await notification_text_channel.send_message(f"**Authentication Request**:\n"
+                                                     f"User Code: *{authentication_flow.user_code}*\n"
+                                                     f"Verification URI: *{authentication_flow.verification_uri}*\n"
+                                                     f"Message: *{authentication_flow.message}*\n")
 
         identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
         return MicrosoftIdentityToken(
