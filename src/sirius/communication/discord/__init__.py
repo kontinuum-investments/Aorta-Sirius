@@ -23,7 +23,8 @@ class ServerName(Enum):
 
 
 class AortaTextChannels(Enum):
-    WISE: str = "wise"
+    NOTIFICATION: str = "notification"
+    BETELGEUSE: str = "betelgeuse"
 
 
 class Bot(DataClass):

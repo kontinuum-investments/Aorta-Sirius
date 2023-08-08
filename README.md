@@ -15,6 +15,8 @@ The Global Python SDK for the Central Finite Curve
 - `WISE_PRIMARY_ACCOUNT_API_KEY` _(for production environment)_
 - `WISE_SECONDARY_ACCOUNT_API_KEY` _(for production environment)_
 - `MONGO_DB_CONNECTION_STRING`
+- `ENTRA_ID_CLIENT_ID` - Entra ID Client ID
+- `ENTRA_ID_TENANT_ID` - Entra ID Tenant ID
 
 ## Development
 
