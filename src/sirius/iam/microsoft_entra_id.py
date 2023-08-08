@@ -50,7 +50,7 @@ class MicrosoftIdentityToken(BaseModel):
         )
 
     @staticmethod
-    async def get_token(scopes: List[str], notification_text_channel: TextChannel, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentityToken":
+    async def get_token(scopes: List[str], notification_text_channel: TextChannel, application_name: str, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentityToken":
         client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
         public_client_application: PublicClientApplication = PublicClientApplication(client_id, authority=f"https://login.microsoftonline.com/{tenant_id}")
@@ -60,6 +60,7 @@ class MicrosoftIdentityToken(BaseModel):
         flow, authentication_flow = MicrosoftIdentityToken._get_flow(public_client_application, scopes)
 
         await notification_text_channel.send_message(f"**Authentication Request**:\n"
+                                                     f"Application Name: {application_name}\n"
                                                      f"User Code: *{authentication_flow.user_code}*\n"
                                                      f"Verification URI: *{authentication_flow.verification_uri}*\n"
                                                      f"Message: *{authentication_flow.message}*\n")
