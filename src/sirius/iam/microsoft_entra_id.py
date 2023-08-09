@@ -1,7 +1,13 @@
+import base64
 import datetime
 import json
+from functools import cache
 from typing import Any, Dict, List
 
+import jwt
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
 from msal import PublicClientApplication
 from pydantic import BaseModel
 
@@ -9,6 +15,7 @@ from sirius import common
 from sirius.communication.discord import TextChannel
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
+from sirius.http_requests import AsyncHTTPSession, HTTPResponse
 
 
 class AuthenticationFlow(BaseModel):
@@ -82,3 +89,46 @@ class MicrosoftIdentityToken(BaseModel):
             user_id=identity_token_dict["id_token_claims"]["oid"],
             subject_id=identity_token_dict["id_token_claims"]["sub"],
         )
+
+    @staticmethod
+    @cache
+    async def _get_microsoft_jwk(key_id: str, tenant_id: str | None = None) -> Dict[str, Any]:
+        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
+
+        jwks_location_url: str = f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"
+        jwks_location_response: HTTPResponse = await AsyncHTTPSession(jwks_location_url).get(jwks_location_url)
+        jws_response: HTTPResponse = await AsyncHTTPSession(jwks_location_response.data["jwks_uri"]).get(jwks_location_response.data["jwks_uri"])
+        return next(filter(lambda j: j["kid"] == key_id, jws_response.data["keys"]))
+
+    @staticmethod
+    async def _rsa_public_from_access_token(access_token: str, tenant_id: str | None = None) -> bytes:
+        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
+        key_id: str = jwt.get_unverified_header(access_token)["kid"]
+        jwk: Dict[str, Any] = await MicrosoftIdentityToken._get_microsoft_jwk(key_id, tenant_id)
+
+        return RSAPublicNumbers(
+            n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
+            e=int.from_bytes(base64.urlsafe_b64decode(jwk["e"].encode("utf-8") + b"=="), "big")
+        ).public_key(default_backend()).public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
+    @classmethod
+    async def is_access_token_valid(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> bool:
+        client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
+        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
+        public_key: bytes = await MicrosoftIdentityToken._rsa_public_from_access_token(access_token, tenant_id)
+
+        try:
+            jwt.decode(
+                access_token,
+                public_key,
+                verify=True,
+                algorithms=['RS256'],
+                audience=[client_id],
+                issuer=f"https://sts.windows.net/{tenant_id}/"
+            )
+            return True
+        except Exception:
+            return False
