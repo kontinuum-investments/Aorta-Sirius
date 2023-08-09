@@ -6,8 +6,7 @@ from typing import Any, Dict, List
 
 import jwt
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPublicKey
 from msal import PublicClientApplication
 from pydantic import BaseModel
 
@@ -101,7 +100,7 @@ class MicrosoftIdentityToken(BaseModel):
         return next(filter(lambda j: j["kid"] == key_id, jws_response.data["keys"]))
 
     @staticmethod
-    async def _rsa_public_from_access_token(access_token: str, tenant_id: str | None = None) -> bytes:
+    async def _rsa_public_from_access_token(access_token: str, tenant_id: str | None = None) -> RSAPublicKey:
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
         key_id: str = jwt.get_unverified_header(access_token)["kid"]
         jwk: Dict[str, Any] = await MicrosoftIdentityToken._get_microsoft_jwk(key_id, tenant_id)
@@ -109,16 +108,13 @@ class MicrosoftIdentityToken(BaseModel):
         return RSAPublicNumbers(
             n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
             e=int.from_bytes(base64.urlsafe_b64decode(jwk["e"].encode("utf-8") + b"=="), "big")
-        ).public_key(default_backend()).public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
+        ).public_key(default_backend())
 
     @classmethod
     async def is_access_token_valid(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> bool:
         client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
-        public_key: bytes = await MicrosoftIdentityToken._rsa_public_from_access_token(access_token, tenant_id)
+        public_key: RSAPublicKey = await MicrosoftIdentityToken._rsa_public_from_access_token(access_token, tenant_id)
 
         try:
             jwt.decode(
