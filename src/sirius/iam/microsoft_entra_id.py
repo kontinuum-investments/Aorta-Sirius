@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPublicKey
+from jwt import ExpiredSignatureError
 from msal import PublicClientApplication
 from pydantic import BaseModel
 
@@ -119,12 +120,12 @@ class MicrosoftIdentityToken(BaseModel):
         try:
             jwt.decode(
                 access_token,
-                public_key,
+                public_key,  # type: ignore
                 verify=True,
                 algorithms=['RS256'],
                 audience=[client_id],
                 issuer=f"https://sts.windows.net/{tenant_id}/"
             )
             return True
-        except Exception:
+        except ExpiredSignatureError | Exception:
             return False
