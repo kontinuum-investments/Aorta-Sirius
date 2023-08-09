@@ -119,11 +119,11 @@ class MicrosoftIdentityToken(BaseModel):
         try:
             jwt.decode(
                 access_token,
-                public_key,  # type: ignore
+                public_key,
                 verify=True,
                 algorithms=['RS256'],
                 audience=[client_id],
-                issuer=f"https://sts.windows.net/{tenant_id}/"
+                issuer=jwt.decode(access_token, verify=False)["iss"]
             )
             return True
         except Exception:
