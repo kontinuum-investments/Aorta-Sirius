@@ -119,7 +119,7 @@ class MicrosoftIdentityToken(BaseModel):
         try:
             jwt.decode(
                 access_token,
-                public_key,
+                public_key,  # type: ignore[arg-type]
                 verify=True,
                 algorithms=['RS256'],
                 audience=[client_id],
