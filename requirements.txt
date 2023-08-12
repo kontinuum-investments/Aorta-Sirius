@@ -3,4 +3,4 @@ motor
 pydantic
 httpx
 msal
-pyjwt
+pyjwt>="2.8.0"
