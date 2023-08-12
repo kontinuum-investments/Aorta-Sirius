@@ -3,3 +3,4 @@ motor
 pydantic
 httpx
 msal
+jwt
