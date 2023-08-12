@@ -108,7 +108,7 @@ class MicrosoftIdentityToken(BaseModel):
         return RSAPublicNumbers(
             n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
             e=int.from_bytes(base64.urlsafe_b64decode(jwk["e"].encode("utf-8") + b"=="), "big")
-        ).public_key(default_backend())  # type: ignore[no-untyped-call]
+        ).public_key(default_backend())
 
     @classmethod
     async def is_access_token_valid(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> bool:
@@ -119,7 +119,7 @@ class MicrosoftIdentityToken(BaseModel):
         try:
             jwt.decode(
                 access_token,
-                public_key,  # type: ignore[arg-type]
+                public_key,
                 verify=True,
                 algorithms=['RS256'],
                 audience=[client_id],
