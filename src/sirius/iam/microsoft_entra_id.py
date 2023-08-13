@@ -76,7 +76,7 @@ class MicrosoftIdentity(BaseModel):
 
         flow: Dict[str, Any]
         authentication_flow: AuthenticationFlow
-        flow, authentication_flow = MicrosoftIdentityToken._get_flow(public_client_application, scopes)
+        flow, authentication_flow = MicrosoftIdentity._get_flow(public_client_application, scopes)
 
         await notification_text_channel.send_message(f"**Authentication Request**:\n"
                                                      f"Application Name: *{application_name}*\n"
@@ -116,7 +116,7 @@ class MicrosoftIdentity(BaseModel):
     async def _rsa_public_from_access_token(access_token: str, tenant_id: str | None = None) -> RSAPublicKey:
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
         key_id: str = jwt.get_unverified_header(access_token)["kid"]
-        jwk: Dict[str, Any] = await MicrosoftIdentityToken._get_microsoft_jwk(key_id, tenant_id)
+        jwk: Dict[str, Any] = await MicrosoftIdentity._get_microsoft_jwk(key_id, tenant_id)
 
         return RSAPublicNumbers(
             n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
@@ -127,7 +127,7 @@ class MicrosoftIdentity(BaseModel):
     async def get_identity_from_access_token(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentity":
         client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
-        public_key: RSAPublicKey = await MicrosoftIdentityToken._rsa_public_from_access_token(access_token, tenant_id)
+        public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, tenant_id)
 
         try:
             payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=False, audience=[client_id], algorithms=["RS256"])
