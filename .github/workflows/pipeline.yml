@@ -8,6 +8,25 @@ on:
         - development
 
 jobs:
+  Qodana-Scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Installing Python
+        run: sudo apt update && sudo apt install python3
+
+      - name: Installing Dependencies
+        run: python3 -m pip install -r requirements.txt
+
+      - name: 'Qodana Scan'
+        uses: JetBrains/qodana-action@main
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+
+
   Deploy-to-PyPi:
     runs-on: ubuntu-latest
     steps:
