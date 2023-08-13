@@ -8,7 +8,41 @@ on:
         - development
 
 jobs:
-  Deploy-to-PyPi:
+  Validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Installing Dependencies
+        run: python3 -m pip install -r requirements-dev.txt && python3 -m pip install -r requirements.txt
+
+      - name: Running MyPy check
+        run: mypy . --install-types --non-interactive
+
+      - name: Running Tests
+        shell: bash
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          SENTRY_URL: ${{ secrets.SENTRY_URL }}
+          WISE_SANDBOX_ACCOUNT_API_KEY: ${{ secrets.WISE_SANDBOX_ACCOUNT_API_KEY }}
+          APPLICATION_NAME: ${{ vars.APPLICATION_NAME }}
+          ENTRA_ID_CLIENT_ID: ${{ secrets.ENTRA_ID_CLIENT_ID }}
+          ENTRA_ID_TENANT_ID: ${{ secrets.ENTRA_ID_TENANT_ID }}
+          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+        run: pytest --cov sirius src/tests --cov-report xml
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v3
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  Deploy-to-Docker-Hub-and-Azure:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
