@@ -31,6 +31,8 @@ jobs:
           WISE_SANDBOX_ACCOUNT_API_KEY: ${{ secrets.WISE_SANDBOX_ACCOUNT_API_KEY }}
           APPLICATION_NAME: ${{ vars.APPLICATION_NAME }}
           ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+          ENTRA_ID_CLIENT_ID: $ {{ secrets.ENTRA_ID_CLIENT_ID }}
+          ENTRA_ID_TENANT_ID: $ {{ secrets.ENTRA_ID_TENANT_ID }}
         run: pytest --cov sirius src/tests --cov-report xml
 
       - name: Upload coverage reports to Codecov

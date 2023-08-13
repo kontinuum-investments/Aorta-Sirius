@@ -99,7 +99,7 @@ def is_test_environment() -> bool:
 
 
 def is_development_environment() -> bool:
-    return Environment.Development == get_environment()
+    return Environment.Development == get_environment() or is_ci_cd_pipeline_environment()
 
 
 def is_ci_cd_pipeline_environment() -> bool:
@@ -152,7 +152,7 @@ def get_decimal_str(decimal: Decimal) -> str:
 
 def only_in_dev(func: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
-        if not is_development_environment() and not is_ci_cd_pipeline_environment():
+        if not is_development_environment():
             raise OperationNotSupportedException("Operation is only permitted in the dev environment")
         return func(*args, **kwargs)
 
