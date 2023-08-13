@@ -81,7 +81,7 @@ class MicrosoftIdentity(BaseModel):
 
         identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
         while is_token_acquired(identity_token_dict) or number_of_seconds_waiting > time_out_seconds:
-            identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
+            identity_token_dict = public_client_application.acquire_token_by_device_flow(flow)
             await asyncio.sleep(constants.ACQUIRE_ACCESS_TOKEN__POLLING_SLEEP_SECONDS)
             number_of_seconds_waiting = number_of_seconds_waiting + 1
 
