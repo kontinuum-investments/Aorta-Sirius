@@ -153,7 +153,7 @@ class MicrosoftIdentity(BaseModel):
             entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
             entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
             public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, entra_id_tenant_id)
-            payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=False, audience=[entra_id_client_id], algorithms=["RS256"])
+            payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=not common.is_ci_cd_pipeline_environment(), audience=[entra_id_client_id], algorithms=["RS256"])
             return MicrosoftIdentity(
                 audience_id=payload["aud"],
                 authenticated_timestamp=datetime.datetime.utcfromtimestamp(payload["iat"]),
