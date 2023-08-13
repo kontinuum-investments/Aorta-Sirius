@@ -34,7 +34,7 @@ class MicrosoftIdentityToken(BaseModel):
     client_info: str
     name: str
     username: str
-    tenant_id: str
+    entra_id_tenant_id: str
     application_id: str
     authenticated_timestamp: datetime.datetime
     inception_timestamp: datetime.datetime
@@ -51,9 +51,10 @@ class MicrosoftIdentity(BaseModel):
     expiry_timestamp: datetime.datetime
     application_id: str
     name: str
-    ip_address: str
     scope: str
     user_id: str
+    ip_address: str | None = None
+    port_number: int | None = None
 
     @staticmethod
     def _get_flow(public_client_application: PublicClientApplication, scopes: List[str]) -> tuple[dict[str, Any], AuthenticationFlow]:
@@ -70,10 +71,10 @@ class MicrosoftIdentity(BaseModel):
         )
 
     @staticmethod
-    async def get_token(scopes: List[str], notification_text_channel: TextChannel, application_name: str, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentityToken":
-        client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
-        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
-        public_client_application: PublicClientApplication = PublicClientApplication(client_id, authority=f"https://login.microsoftonline.com/{tenant_id}")
+    async def get_token(scopes: List[str], notification_text_channel: TextChannel, application_name: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentityToken":
+        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+        public_client_application: PublicClientApplication = PublicClientApplication(entra_id_client_id, authority=f"https://login.microsoftonline.com/{entra_id_tenant_id}")
 
         flow: Dict[str, Any]
         authentication_flow: AuthenticationFlow
@@ -94,7 +95,7 @@ class MicrosoftIdentity(BaseModel):
             client_info=identity_token_dict["client_info"],
             name=identity_token_dict["id_token_claims"]["name"],
             username=identity_token_dict["id_token_claims"]["preferred_username"],
-            tenant_id=identity_token_dict["id_token_claims"]["tid"],
+            entra_id_tenant_id=identity_token_dict["id_token_claims"]["tid"],
             application_id=identity_token_dict["id_token_claims"]["aud"],
             authenticated_timestamp=datetime.datetime.utcfromtimestamp(identity_token_dict["id_token_claims"]["iat"]),
             inception_timestamp=datetime.datetime.utcfromtimestamp(identity_token_dict["id_token_claims"]["nbf"]),
@@ -105,19 +106,19 @@ class MicrosoftIdentity(BaseModel):
 
     @staticmethod
     @cached(ttl=86_400)
-    async def _get_microsoft_jwk(key_id: str, tenant_id: str | None = None) -> Dict[str, Any]:
-        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
+    async def _get_microsoft_jwk(key_id: str, entra_id_tenant_id: str | None = None) -> Dict[str, Any]:
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
 
-        jwks_location_url: str = f"https://login.microsoftonline.com/{tenant_id}/.well-known/openid-configuration"
+        jwks_location_url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/.well-known/openid-configuration"
         jwks_location_response: HTTPResponse = await AsyncHTTPSession(jwks_location_url).get(jwks_location_url)
         jws_response: HTTPResponse = await AsyncHTTPSession(jwks_location_response.data["jwks_uri"]).get(jwks_location_response.data["jwks_uri"])
         return next(filter(lambda j: j["kid"] == key_id, jws_response.data["keys"]))
 
     @staticmethod
-    async def _rsa_public_from_access_token(access_token: str, tenant_id: str | None = None) -> RSAPublicKey:
-        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
+    async def _rsa_public_from_access_token(access_token: str, entra_id_tenant_id: str | None = None) -> RSAPublicKey:
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
         key_id: str = jwt.get_unverified_header(access_token)["kid"]
-        jwk: Dict[str, Any] = await MicrosoftIdentity._get_microsoft_jwk(key_id, tenant_id)
+        jwk: Dict[str, Any] = await MicrosoftIdentity._get_microsoft_jwk(key_id, entra_id_tenant_id)
 
         return RSAPublicNumbers(
             n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
@@ -125,13 +126,13 @@ class MicrosoftIdentity(BaseModel):
         ).public_key(default_backend())
 
     @classmethod
-    async def get_identity_from_access_token(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentity":
-        client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
-        tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
-        public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, tenant_id)
+    async def get_identity_from_access_token(cls, access_token: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
+        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+        public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, entra_id_tenant_id)
 
         try:
-            payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=False, audience=[client_id], algorithms=["RS256"])
+            payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=False, audience=[entra_id_client_id], algorithms=["RS256"])
             return MicrosoftIdentity(
                 audience_id=payload["aud"],
                 authenticated_timestamp=datetime.datetime.utcfromtimestamp(payload["iat"]),
@@ -139,7 +140,6 @@ class MicrosoftIdentity(BaseModel):
                 expiry_timestamp=datetime.datetime.utcfromtimestamp(payload["exp"]),
                 application_id=payload["appid"],
                 name=f"{payload['given_name']} {payload['family_name']}",
-                ip_address=payload["ipaddr"],
                 scope=payload["scp"],
                 user_id=payload["unique_name"]
             )
