@@ -148,11 +148,11 @@ class MicrosoftIdentity(BaseModel):
 
     @classmethod
     async def get_identity_from_access_token(cls, access_token: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
-        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
-        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-        public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, entra_id_tenant_id)
-
         try:
+
+            entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+            entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+            public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, entra_id_tenant_id)
             payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=False, audience=[entra_id_client_id], algorithms=["RS256"])
             return MicrosoftIdentity(
                 audience_id=payload["aud"],
@@ -164,5 +164,8 @@ class MicrosoftIdentity(BaseModel):
                 scope=payload["scp"],
                 user_id=payload["unique_name"]
             )
+
+        except AccessTokenRetrievalTimeoutException as e:
+            raise e
         except Exception:
             raise InvalidAccessTokenException("Invalid token supplied")
