@@ -15,6 +15,7 @@ from sirius.communication.discord import TextChannel
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse
+from sirius.iam.exceptions import InvalidAccessTokenException
 
 
 class AuthenticationFlow(BaseModel):
@@ -40,6 +41,18 @@ class MicrosoftIdentityToken(BaseModel):
     user_id: str
     subject_id: str
     scope: str | None = None
+
+
+class MicrosoftIdentity(BaseModel):
+    audience_id: str
+    authenticated_timestamp: datetime.datetime
+    inception_timestamp: datetime.datetime
+    expiry_timestamp: datetime.datetime
+    application_id: str
+    name: str
+    ip_address: str
+    scope: str
+    user_id: str
 
     @staticmethod
     def _get_flow(public_client_application: PublicClientApplication, scopes: List[str]) -> tuple[dict[str, Any], AuthenticationFlow]:
@@ -111,20 +124,23 @@ class MicrosoftIdentityToken(BaseModel):
         ).public_key(default_backend())
 
     @classmethod
-    async def is_access_token_valid(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> bool:
+    async def get_identity_from_access_token(cls, access_token: str, client_id: str | None = None, tenant_id: str | None = None) -> "MicrosoftIdentity":
         client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if client_id is None else client_id
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
         public_key: RSAPublicKey = await MicrosoftIdentityToken._rsa_public_from_access_token(access_token, tenant_id)
 
         try:
-            jwt.decode(
-                access_token,
-                public_key,
-                verify=True,
-                algorithms=['RS256'],
-                audience=[client_id],
-                issuer=jwt.decode(access_token, verify=False)["iss"]
+            payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=False, audience=[client_id], algorithms=["RS256"])
+            return MicrosoftIdentity(
+                audience_id=payload["aud"],
+                authenticated_timestamp=datetime.datetime.utcfromtimestamp(payload["iat"]),
+                inception_timestamp=datetime.datetime.utcfromtimestamp(payload["nbf"]),
+                expiry_timestamp=datetime.datetime.utcfromtimestamp(payload["exp"]),
+                application_id=payload["appid"],
+                name=f"{payload['given_name']} {payload['family_name']}",
+                ip_address=payload["ipaddr"],
+                scope=payload["scp"],
+                user_id=payload["unique_name"]
             )
-            return True
         except Exception:
-            return False
+            raise InvalidAccessTokenException("Invalid token supplied")
