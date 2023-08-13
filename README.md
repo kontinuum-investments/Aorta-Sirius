@@ -17,6 +17,7 @@ The Global Python SDK for the Central Finite Curve
 - `MONGO_DB_CONNECTION_STRING`
 - `ENTRA_ID_CLIENT_ID` - Entra ID Client ID
 - `ENTRA_ID_TENANT_ID` - Entra ID Tenant ID
+- `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
 
 ## Development
 

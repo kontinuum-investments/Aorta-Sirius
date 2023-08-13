@@ -14,8 +14,9 @@ from sirius.exceptions import ApplicationException, SDKClientException, Operatio
 
 class Environment(Enum):
     Production: str = "Production"
-    Staging: str = "Staging"
+    Test: str = "Test"
     Development: str = "Development"
+    CI_CD_PIPELINE: str = "CI/CD Pipeline"
 
 
 class Currency(Enum):
@@ -93,12 +94,16 @@ def is_production_environment() -> bool:
     return Environment.Production == get_environment()
 
 
-def is_staging_environment() -> bool:
-    return Environment.Staging == get_environment()
+def is_test_environment() -> bool:
+    return Environment.Test == get_environment()
 
 
 def is_development_environment() -> bool:
     return Environment.Development == get_environment()
+
+
+def is_ci_cd_pipeline_environment() -> bool:
+    return Environment.CI_CD_PIPELINE == get_environment()
 
 
 def get_application_name() -> str:
@@ -123,7 +128,7 @@ def wait_for_all_coroutines(func: Callable) -> Callable:
     async def wrapper(*args: Any, **kwargs: Any) -> None:
         asyncio.create_task(func(*args, **kwargs))
         await asyncio.wait(  # type: ignore[type-var]
-            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),   # type: ignore[arg-type,union-attr,attr-defined]
+            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),  # type: ignore[arg-type,union-attr,attr-defined]
             timeout=600)
         return None
 
