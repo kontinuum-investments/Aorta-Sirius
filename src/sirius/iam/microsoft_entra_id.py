@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import datetime
 import json
@@ -15,8 +16,8 @@ from sirius.communication.discord import TextChannel
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse
-from sirius.iam.exceptions import InvalidAccessTokenException
-
+from sirius.iam import constants
+from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException
 
 
 class AuthenticationFlow(BaseModel):
@@ -71,6 +72,25 @@ class MicrosoftIdentity(BaseModel):
         )
 
     @staticmethod
+    async def _get_access_token_by_device_flow(public_client_application: PublicClientApplication, flow: Dict[str, Any], time_out_seconds: int = None) -> Dict[str, Any]:
+        def is_token_acquired(itd: Dict[str, Any]) -> bool:
+            return "access_token" in itd.keys()
+
+        time_out_seconds = constants.ACQUIRE_ACCESS_TOKEN__POLLING_TIMEOUT_SECONDS if time_out_seconds is None else time_out_seconds
+        number_of_seconds_waiting: int = 0
+
+        identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
+        while is_token_acquired(identity_token_dict) or number_of_seconds_waiting > time_out_seconds:
+            identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
+            await asyncio.sleep(constants.ACQUIRE_ACCESS_TOKEN__POLLING_SLEEP_SECONDS)
+            number_of_seconds_waiting = number_of_seconds_waiting + 1
+
+        if is_token_acquired(identity_token_dict):
+            return identity_token_dict
+        else:
+            raise AccessTokenRetrievalTimeoutException("Access token retrieval timed-out")
+
+    @staticmethod
     async def get_token(scopes: List[str], notification_text_channel: TextChannel, application_name: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentityToken":
         entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
@@ -79,6 +99,7 @@ class MicrosoftIdentity(BaseModel):
         flow: Dict[str, Any]
         authentication_flow: AuthenticationFlow
         flow, authentication_flow = MicrosoftIdentity._get_flow(public_client_application, scopes)
+        flow["expires_at"] = 0  # Makes the token acquiring process non-blocking, allowing for custom polling
 
         await notification_text_channel.send_message(f"**Authentication Request**:\n"
                                                      f"Application Name: *{application_name}*\n"
@@ -86,7 +107,7 @@ class MicrosoftIdentity(BaseModel):
                                                      f"Verification URI: *{authentication_flow.verification_uri}*\n"
                                                      f"Message: *{authentication_flow.message}*\n")
 
-        identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
+        identity_token_dict: Dict[str, Any] = await MicrosoftIdentity._get_access_token_by_device_flow(public_client_application, flow)
         return MicrosoftIdentityToken(
             scope=identity_token_dict["scope"],
             access_token=identity_token_dict["access_token"],

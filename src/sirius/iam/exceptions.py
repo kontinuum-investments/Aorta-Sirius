@@ -7,3 +7,7 @@ class IAMException(ApplicationException):
 
 class InvalidAccessTokenException(IAMException):
     pass
+
+
+class AccessTokenRetrievalTimeoutException(IAMException):
+    pass
