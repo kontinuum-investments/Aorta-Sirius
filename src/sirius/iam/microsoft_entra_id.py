@@ -1,10 +1,10 @@
 import base64
 import datetime
 import json
-from functools import cache
 from typing import Any, Dict, List
 
 import jwt
+from aiocache import Cache, cached
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPublicKey
 from msal import PublicClientApplication
@@ -16,6 +16,7 @@ from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse
 from sirius.iam.exceptions import InvalidAccessTokenException
+
 
 
 class AuthenticationFlow(BaseModel):
@@ -103,7 +104,7 @@ class MicrosoftIdentity(BaseModel):
         )
 
     @staticmethod
-    @cache
+    @cached(ttl=86_400)
     async def _get_microsoft_jwk(key_id: str, tenant_id: str | None = None) -> Dict[str, Any]:
         tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if tenant_id is None else tenant_id
 
