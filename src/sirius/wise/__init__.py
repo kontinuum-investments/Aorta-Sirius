@@ -49,7 +49,7 @@ class Discord:
 
         cls.bot = await Bot.get()
         cls.server = await cls.bot.get_server()
-        cls.wise_channel = await cls.server.get_text_channel(AortaTextChannels.NOTIFICATION.value)
+        cls.wise_channel = await cls.server.get_text_channel(AortaTextChannels.WISE.value)
         return cls.wise_channel
 
     @classmethod
