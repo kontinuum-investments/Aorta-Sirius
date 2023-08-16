@@ -81,13 +81,7 @@ class WiseAccount(DataClass):
 
     @staticmethod
     def get(wise_account_type: WiseAccountType) -> "WiseAccount":
-        environmental_variable: EnvironmentVariable
-
-        if common.is_production_environment():
-            environmental_variable = EnvironmentVariable.WISE_PRIMARY_ACCOUNT_API_KEY if wise_account_type == WiseAccountType.PRIMARY else EnvironmentVariable.WISE_SECONDARY_ACCOUNT_API_KEY
-        else:
-            environmental_variable = EnvironmentVariable.WISE_SANDBOX_ACCOUNT_API_KEY
-
+        environmental_variable: EnvironmentVariable = EnvironmentVariable.WISE_PRIMARY_ACCOUNT_API_KEY if wise_account_type == WiseAccountType.PRIMARY else EnvironmentVariable.WISE_SECONDARY_ACCOUNT_API_KEY
         http_session: SyncHTTPSession = SyncHTTPSession(constants.URL, {
             "Authorization": f"Bearer {common.get_environmental_variable(environmental_variable)}"})
 

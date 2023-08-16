@@ -11,27 +11,20 @@ The Global Python SDK for the Central Finite Curve
 - `APPLICATION_NAME` _(Used as the default Discord Server Name)_
 - `DISCORD_BOT_TOKEN`
 - `SENTRY_URL`
-- `WISE_SANDBOX_ACCOUNT_API_KEY` _(for development environment)_
-- `WISE_PRIMARY_ACCOUNT_API_KEY` _(for production environment)_
-- `WISE_SECONDARY_ACCOUNT_API_KEY` _(for production environment)_
+- `WISE_PRIMARY_ACCOUNT_API_KEY`
+- `WISE_SECONDARY_ACCOUNT_API_KEY`
 - `MONGO_DB_CONNECTION_STRING`
 - `ENTRA_ID_CLIENT_ID` - Entra ID Client ID
 - `ENTRA_ID_TENANT_ID` - Entra ID Tenant ID
 - `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
 
-## Development
-
-## Required Organization Secrets
-
-- `SENTRY_URL`
-- `WISE_SANDBOX_ACCOUNT_API_KEY`
-
+## CI/CD Pipeline
 ## Required Repository Secrets
-
 - `CODECOV_TOKEN`
 - `PYPI_ACCESS_TOKEN`
 - `QODANA_TOKEN`
-
-## Required Repository Variables
-
-- `APPLICATION_NAME`
+- `APPLICATION_NAME` _(Used as the default Discord Server Name)_
+- `DISCORD_BOT_TOKEN`
+- `SENTRY_URL`
+- `WISE_PRIMARY_ACCOUNT_API_KEY`
+- `WISE_SECONDARY_ACCOUNT_API_KEY`
