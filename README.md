@@ -23,8 +23,13 @@ The Global Python SDK for the Central Finite Curve
 - `CODECOV_TOKEN`
 - `PYPI_ACCESS_TOKEN`
 - `QODANA_TOKEN`
-- `APPLICATION_NAME` _(Used as the default Discord Server Name)_
 - `DISCORD_BOT_TOKEN`
+
+## Required Organizational Variables
+- `APPLICATION_NAME` _(Used as the default Discord Server Name)_
+- `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
+
+## Required Organizational Secrets
 - `SENTRY_URL`
 - `WISE_PRIMARY_ACCOUNT_API_KEY`
 - `WISE_SECONDARY_ACCOUNT_API_KEY`
