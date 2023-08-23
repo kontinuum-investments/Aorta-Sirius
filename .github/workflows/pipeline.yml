@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
   push:
       branches:
-        - production
         - development
 
 jobs:
@@ -29,6 +28,7 @@ jobs:
 
   Deploy-to-PyPi:
     runs-on: ubuntu-latest
+    environment: CI/CD Pipeline
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
