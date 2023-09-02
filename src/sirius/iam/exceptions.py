@@ -11,3 +11,7 @@ class InvalidAccessTokenException(IAMException):
 
 class AccessTokenRetrievalTimeoutException(IAMException):
     pass
+
+
+class AccessTokenRetrievalException(IAMException):
+    pass

@@ -17,7 +17,7 @@ from sirius.constants import EnvironmentVariable
 from sirius.exceptions import ApplicationException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse
 from sirius.iam import constants
-from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException
+from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException, AccessTokenRetrievalException
 
 
 class AuthenticationFlow(BaseModel):
@@ -76,6 +76,9 @@ class MicrosoftIdentity(BaseModel):
         def is_token_acquired(itd: Dict[str, Any]) -> bool:
             return "access_token" in itd.keys()
 
+        def is_error(itd: Dict[str, Any]) -> bool:
+            return "error" in itd.keys()
+
         time_out_seconds = constants.ACQUIRE_ACCESS_TOKEN__POLLING_TIMEOUT_SECONDS if time_out_seconds is None else time_out_seconds
         number_of_seconds_waiting: int = 0
 
@@ -87,6 +90,8 @@ class MicrosoftIdentity(BaseModel):
 
         if is_token_acquired(identity_token_dict):
             return identity_token_dict
+        elif is_error(identity_token_dict):
+            raise AccessTokenRetrievalException(f"Error retrieving access token: {identity_token_dict['error_description']}")
         else:
             raise AccessTokenRetrievalTimeoutException("Access token retrieval timed-out")
 
