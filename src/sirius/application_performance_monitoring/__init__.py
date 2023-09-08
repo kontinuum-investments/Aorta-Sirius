@@ -28,8 +28,11 @@ sentry_sdk.init(
 def transaction(operation: Operation, transaction_name: str) -> Callable:
     def decorator(function: Callable) -> Callable:
         def wrapper(*args: List[Any], **kwargs: Dict[str, Any]) -> Any:
-            with sentry_sdk.start_transaction(op=operation.value, name=transaction_name):
-                result: Any = function(*args, **kwargs)
+            if common.is_ci_cd_pipeline_environment() or common.is_development_environment():
+                return function(*args, **kwargs)
+            else:
+                with sentry_sdk.start_transaction(op=operation.value, name=transaction_name):
+                    result: Any = function(*args, **kwargs)
             return result
 
         return wrapper
