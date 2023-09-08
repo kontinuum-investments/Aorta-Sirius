@@ -6,4 +6,3 @@ msal
 pyjwt>=2.8.0
 aiocache
 schedule
-pytz
