@@ -1,28 +1,16 @@
-import threading
-import time
+import asyncio
+from typing import Callable
 
-import schedule
-
-
-class ScheduleThread(threading.Thread):
-    threading_event: threading.Event | None = None
-    instance: "ScheduleThread" = None
-
-    @classmethod
-    def run(cls) -> None:
-        while not cls.threading_event.is_set():
-            schedule.run_pending()
-            time.sleep(1)
+import pytz
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 
-class Scheduler:
-    threading_event: threading.Event | None = None
+class AsynchronousScheduler:
+    _instance: AsyncIOScheduler | None = None
 
     @classmethod
-    def start_scheduler(cls) -> None:
-        cls.threading_event = threading.Event() if cls.threading_event is None else cls.threading_event
-        ScheduleThread.threading_event = cls.threading_event if ScheduleThread.threading_event is None else ScheduleThread.threading_event
-        ScheduleThread.instance = ScheduleThread() if ScheduleThread.instance is None else ScheduleThread.instance
-
-        if not ScheduleThread.instance.is_alive():
-            ScheduleThread.instance.start()
+    async def add_job(cls, func: Callable, **kwargs) -> None:
+        cls._instance = AsyncIOScheduler(timezone=pytz.timezone("Pacific/Auckland")) if cls._instance is None else cls._instance
+        cls._instance.add_job(func, "cron", **kwargs)
+        if not cls._instance.running:
+            cls._instance.start()
