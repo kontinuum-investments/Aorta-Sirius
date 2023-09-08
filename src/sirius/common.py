@@ -161,9 +161,5 @@ def only_in_dev(func: Callable) -> Callable:
     return wrapper
 
 
-def get_servers_domain_name() -> str:
-    return get_servers_fqdn().split('.', 1)[1]
-
-
 def get_servers_fqdn() -> str:
     return socket.getfqdn()
