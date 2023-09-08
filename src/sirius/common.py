@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import os
+import socket
 import threading
 from enum import Enum
 from typing import Callable, Any, Dict
@@ -100,7 +101,7 @@ def is_test_environment() -> bool:
 
 # TODO: Create redundancy check (if a test/production environment is identified as development, no authentication is done)
 def is_development_environment() -> bool:
-    return Environment.Development == get_environment() or is_ci_cd_pipeline_environment()
+    return (Environment.Development == get_environment() or is_ci_cd_pipeline_environment()) and "azure" not in get_servers_domain_name().lower()
 
 
 def is_ci_cd_pipeline_environment() -> bool:
@@ -158,3 +159,11 @@ def only_in_dev(func: Callable) -> Callable:
         return func(*args, **kwargs)
 
     return wrapper
+
+
+def get_servers_domain_name() -> str:
+    return get_servers_fqdn().split('.', 1)[1]
+
+
+def get_servers_fqdn() -> str:
+    return socket.getfqdn()
