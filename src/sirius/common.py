@@ -101,7 +101,7 @@ def is_test_environment() -> bool:
 
 # TODO: Create redundancy check (if a test/production environment is identified as development, no authentication is done)
 def is_development_environment() -> bool:
-    return (Environment.Development == get_environment() or is_ci_cd_pipeline_environment()) and "azure" not in get_servers_domain_name().lower()
+    return (Environment.Development == get_environment() or is_ci_cd_pipeline_environment()) and "azure" not in get_servers_fqdn().lower()
 
 
 def is_ci_cd_pipeline_environment() -> bool:
