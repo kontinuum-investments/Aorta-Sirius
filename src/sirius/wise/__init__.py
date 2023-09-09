@@ -701,7 +701,6 @@ class WiseWebhook:
             account_credit: AccountCredit = AccountCredit.get_from_request_data(request_data)
             await WiseDiscord.notify(f"**Account Update**:\n"
                                      f"*Description*: Account Credited\n"
-                                     f"*Account*: {account_credit.account.currency.value}\n"
                                      f"*Timestamp*: {get_timestamp_string(account_credit.timestamp)}")
             return account_credit
 
