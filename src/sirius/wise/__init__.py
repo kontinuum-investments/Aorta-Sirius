@@ -697,6 +697,30 @@ class AccountDebit(DataClass):
         return AccountDebit(id=request_data["data"]["resource"]["id"], account=cash_account, timestamp=request_data["data"]["occurred_at"])
 
 
+#   TODO: Write tests
+class WiseWebhook:
+
+    @classmethod
+    async def handle_balance_update(cls, request_data: Dict[str, Any]) -> AccountCredit | AccountDebit | None:
+        if request_data["event_type"] == "transfers#state-change":
+            account_credit: AccountCredit = AccountCredit.get_from_request_data(request_data)
+            await WiseDiscord.notify(f"**Account Update**:\n"
+                                     f"Description: *Account Credited*\n"
+                                     f"Account: *{account_credit.account.currency.value}*\n"
+                                     f"Timestamp: {get_timestamp_string(account_credit.timestamp)}")
+            return account_credit
+
+        elif request_data["event_type"] == "balances#credit":
+            account_debit: AccountDebit = AccountDebit.get_from_request_data(request_data)
+            await WiseDiscord.notify(f"**Account Update**:\n"
+                                     f"Description: *Account Debited*\n"
+                                     f"Account: *{account_debit.account.currency.value}*\n"
+                                     f"Timestamp: {get_timestamp_string(account_debit.timestamp)}")
+            return account_debit
+
+        return None
+
+
 WiseAccount.model_rebuild()
 Profile.model_rebuild()
 PersonalProfile.model_rebuild()
