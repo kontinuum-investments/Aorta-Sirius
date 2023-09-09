@@ -668,49 +668,57 @@ class DebitCard(DataClass):
         ) for data in response.data["cards"]]
 
 
-class AccountCredit(DataClass):
+class AccountDebit(DataClass):
     is_attempted: bool
     is_successful: bool
     timestamp: datetime.datetime
 
     @staticmethod
-    def get_from_request_data(request_data: Dict[str, Any]) -> "AccountCredit":
-        return AccountCredit(is_attempted=request_data["data"]["current_state"] == "incoming_payment_waiting",
-                             is_successful=request_data["data"]["current_state"] == "outgoing_payment_sent",
-                             timestamp=request_data["data"]["occurred_at"])
+    def get_from_request_data(request_data: Dict[str, Any]) -> "AccountDebit":
+        return AccountDebit(is_attempted=request_data["data"]["current_state"] == "incoming_payment_waiting",
+                            is_successful=request_data["data"]["current_state"] == "outgoing_payment_sent",
+                            timestamp=request_data["data"]["occurred_at"])
 
 
-class AccountDebit(DataClass):
+class AccountCredit(DataClass):
     id: int
     account: CashAccount
+    transaction_amount: Decimal
+    account_balance: Decimal
     timestamp: datetime.datetime
 
     @staticmethod
-    def get_from_request_data(request_data: Dict[str, Any]) -> "AccountDebit":
+    def get_from_request_data(request_data: Dict[str, Any]) -> "AccountCredit":
         personal_profile: PersonalProfile = WiseAccount.get(WiseAccountType.PRIMARY).personal_profile
         cash_account: CashAccount = personal_profile.get_cash_account(Currency(request_data["data"]["currency"]))
-        return AccountDebit(id=request_data["data"]["resource"]["id"], account=cash_account, timestamp=request_data["data"]["occurred_at"])
+        return AccountCredit(id=request_data["data"]["resource"]["id"],
+                             account=cash_account,
+                             amount=Decimal(request_data["data"]["amount"]),
+                             account_balance=Decimal(request_data["data"]["post_transaction_balance_amount"]),
+                             timestamp=request_data["data"]["occurred_at"])
 
 
 #   TODO: Write tests
 class WiseWebhook:
 
     @classmethod
-    async def get_balance_update_object(cls, request_data: Dict[str, Any]) -> AccountCredit | AccountDebit | None:
+    async def get_balance_update_object(cls, request_data: Dict[str, Any]) -> AccountDebit | AccountCredit | None:
         if request_data["event_type"] == "transfers#state-change":
-            account_credit: AccountCredit = AccountCredit.get_from_request_data(request_data)
-            await WiseDiscord.notify(f"**Account Update**:\n"
-                                     f"*Description*: Account Credited\n"
-                                     f"*Timestamp*: {get_timestamp_string(account_credit.timestamp)}")
-            return account_credit
-
-        elif request_data["event_type"] == "balances#credit":
             account_debit: AccountDebit = AccountDebit.get_from_request_data(request_data)
             await WiseDiscord.notify(f"**Account Update**:\n"
-                                     f"*Description*: Account Debited\n"
-                                     f"*Account*: {account_debit.account.currency.value}\n"
+                                     f"*Description*: Account Credited\n"
                                      f"*Timestamp*: {get_timestamp_string(account_debit.timestamp)}")
             return account_debit
+
+        elif request_data["event_type"] == "balances#credit":
+            account_credit: AccountCredit = AccountCredit.get_from_request_data(request_data)
+            await WiseDiscord.notify(f"**Account Update**:\n"
+                                     f"*Description*: Account Debited\n"
+                                     f"*Account*: {account_credit.account.currency.value}\n"
+                                     f"*Credited Amount*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.transaction_amount)}\n"
+                                     f"*Balance*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.account_balance)}\n"
+                                     f"*Timestamp*: {get_timestamp_string(account_credit.timestamp)}")
+            return account_credit
 
         return None
 
@@ -722,5 +730,5 @@ BusinessProfile.model_rebuild()
 Account.model_rebuild()
 DebitCard.model_rebuild()
 Transaction.model_rebuild()
-AccountCredit.model_rebuild()
 AccountDebit.model_rebuild()
+AccountCredit.model_rebuild()
