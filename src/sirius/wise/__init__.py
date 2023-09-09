@@ -209,6 +209,7 @@ class Transaction(DataClass):
     type: TransactionType
     description: str
     amount: Decimal
+    third_party: Union[str, "ReserveAccount", "Recipient"]
 
 
 class Account(DataClass):
@@ -250,13 +251,41 @@ class Account(DataClass):
                 "type": "COMPACT"
             })
 
-        return [Transaction(
-            account=self,
-            timestamp=data["date"],
-            type=TransactionType(data["details"]["type"]),
-            description=data["details"]["description"],
-            amount=Decimal(str(data["amount"]["value"])),
-        ) for data in response.data["transactions"]]
+        transaction_list: List[Transaction] = []
+        for data in response.data["transactions"]:
+            transaction_type: TransactionType = TransactionType(data["details"]["type"])
+            third_party: str | ReserveAccount | Recipient
+
+            if transaction_type == TransactionType.DEPOSIT:
+                third_party = data["details"]["senderName"] + " | " + data["details"]["senderAccount"]
+
+            elif transaction_type == TransactionType.TRANSFER:
+                try:
+                    third_party = self.profile.get_recipient(data["details"]["recipient"]["bankAccount"])
+                except RecipientNotFoundException:
+                    third_party = data["details"]["recipient"]["name"] + " | " + data["details"]["recipient"]["bankAccount"]
+
+            elif transaction_type == TransactionType.CARD:
+                third_party = data["details"]["merchant"]["name"] + " | " + data["details"]["merchant"]["country"]
+
+            elif transaction_type == TransactionType.CONVERSION:
+                description: str = data["details"]["description"]
+                reserve_account_name: str = description.split(" to ")[1] if " to " in description else description.split(" from ")[1]
+                try:
+                    third_party = self.profile.get_reserve_account(reserve_account_name, self.currency)
+                except ReserveAccountNotFoundException:
+                    third_party = reserve_account_name
+
+            transaction_list.append(Transaction(
+                account=self,
+                timestamp=data["date"],
+                type=transaction_type,
+                description=data["details"]["description"],
+                amount=Decimal(str(data["amount"]["value"])),
+                third_party=third_party
+            ))
+
+        return transaction_list
 
     @staticmethod
     def abstract_open(profile: Profile, account_name: str | None, currency: Currency,
@@ -650,7 +679,6 @@ class Transfer(DataClass):
         )
 
 
-
 class DebitCard(DataClass):
     profile: Profile
     token: str
@@ -686,7 +714,6 @@ class AccountCredit(DataClass):
     id: int
     account: CashAccount
     transaction: Transaction
-    transaction_amount: Decimal
     account_balance: Decimal
     timestamp: datetime.datetime
 
@@ -698,9 +725,8 @@ class AccountCredit(DataClass):
         transaction: Transaction = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
 
         return AccountCredit(id=request_data["data"]["resource"]["id"],
-                             transaction=transaction,
                              account=cash_account,
-                             transaction_amount=Decimal(request_data["data"]["amount"]),
+                             transaction=transaction,
                              account_balance=Decimal(request_data["data"]["post_transaction_balance_amount"]),
                              timestamp=request_data["data"]["occurred_at"])
 
@@ -722,7 +748,8 @@ class WiseWebhook:
             await WiseDiscord.notify(f"**Account Update**:\n"
                                      f"*Description*: Account Debited\n"
                                      f"*Account*: {account_credit.account.currency.value}\n"
-                                     f"*Credited Amount*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.transaction_amount)}\n"
+                                     f"*From*: {account_credit.transaction.third_party}\n"
+                                     f"*Credited Amount*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.transaction.amount)}\n"
                                      f"*Balance*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.account_balance)}\n"
                                      f"*Timestamp*: {get_timestamp_string(account_credit.timestamp)}")
             return account_credit
