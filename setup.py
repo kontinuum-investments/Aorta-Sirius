@@ -32,7 +32,7 @@ def is_production_branch() -> bool:
 
 
 def get_required_packages() -> List[str]:
-    requirements_file_path: str = "requirements.txt" if os.path.isfile("requirements.txt") else f"src/aorta_sirius_dev.egg-info/requires.txt"
+    requirements_file_path: str = "requirements.txt" if os.path.isfile("requirements.txt") else f"src/{get_package_name()}.egg-info/requires.txt"
 
     with open(requirements_file_path, "r") as requirements_file:
         return requirements_file.read().split("\n")
