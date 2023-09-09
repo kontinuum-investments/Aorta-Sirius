@@ -700,7 +700,7 @@ class AccountCredit(DataClass):
         return AccountCredit(id=request_data["data"]["resource"]["id"],
                              transaction=transaction,
                              account=cash_account,
-                             amount=Decimal(request_data["data"]["amount"]),
+                             transaction_amount=Decimal(request_data["data"]["amount"]),
                              account_balance=Decimal(request_data["data"]["post_transaction_balance_amount"]),
                              timestamp=request_data["data"]["occurred_at"])
 
