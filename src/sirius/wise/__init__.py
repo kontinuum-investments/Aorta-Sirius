@@ -737,22 +737,9 @@ class WiseWebhook:
     @classmethod
     async def get_balance_update_object(cls, request_data: Dict[str, Any]) -> AccountDebit | AccountCredit | None:
         if request_data["event_type"] == "transfers#state-change":
-            account_debit: AccountDebit = AccountDebit.get_from_request_data(request_data)
-            await WiseDiscord.notify(f"**Account Update**:\n"
-                                     f"*Description*: Account Credited\n"
-                                     f"*Timestamp*: {get_timestamp_string(account_debit.timestamp)}")
-            return account_debit
-
+            return AccountDebit.get_from_request_data(request_data)
         elif request_data["event_type"] == "balances#credit":
-            account_credit: AccountCredit = AccountCredit.get_from_request_data(request_data)
-            await WiseDiscord.notify(f"**Account Update**:\n"
-                                     f"*Description*: Account Debited\n"
-                                     f"*Account*: {account_credit.account.currency.value}\n"
-                                     f"*From*: {account_credit.transaction.third_party}\n"
-                                     f"*Credited Amount*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.transaction.amount)}\n"
-                                     f"*Balance*: {account_credit.account.currency.value} {common.get_decimal_str(account_credit.account_balance)}\n"
-                                     f"*Timestamp*: {get_timestamp_string(account_credit.timestamp)}")
-            return account_credit
+            return AccountCredit.get_from_request_data(request_data)
 
         return None
 
