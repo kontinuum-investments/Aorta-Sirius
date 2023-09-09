@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import inspect
 import os
 import socket
@@ -6,6 +7,7 @@ import threading
 from enum import Enum
 from typing import Callable, Any, Dict
 
+import pytz
 from _decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
@@ -163,3 +165,8 @@ def only_in_dev(func: Callable) -> Callable:
 
 def get_servers_fqdn() -> str:
     return socket.getfqdn()
+
+
+def get_timestamp_from_string(timestamp_string: str, timezone_string: str | None = None) -> datetime.datetime:
+    timestamp: datetime.datetime = datetime.datetime.strptime(timestamp_string, "%Y-%m-%dT%H:%M:%SZ")
+    return timestamp if timezone_string is None else timestamp.replace(tzinfo=pytz.timezone(timezone_string))

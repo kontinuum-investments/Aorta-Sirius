@@ -3,6 +3,7 @@ import uuid
 from enum import Enum, auto
 from typing import List, Dict, Any, Union, cast
 
+import pytz
 from _decimal import Decimal, ROUND_HALF_UP
 from pydantic import PrivateAttr, Field
 
@@ -204,7 +205,7 @@ class BusinessProfile(Profile):
 
 class Transaction(DataClass):
     account: "Account" = Field(exclude=True)
-    date: datetime.datetime
+    timestamp: datetime.datetime
     type: TransactionType
     description: str
     amount: Decimal
@@ -251,7 +252,7 @@ class Account(DataClass):
 
         return [Transaction(
             account=self,
-            date=data["date"],
+            timestamp=data["date"],
             type=TransactionType(data["details"]["type"]),
             description=data["details"]["description"],
             amount=Decimal(str(data["amount"]["value"])),
@@ -542,7 +543,7 @@ class Transfer(DataClass):
     from_amount: Decimal
     to_amount: Decimal
     reference: str | None
-    transfer_type: TransferType
+    transfer_type: TransferType | None
 
     @staticmethod
     def intra_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: CashAccount, amount: Decimal, is_amount_in_from_currency: bool = False) -> "Transfer":
@@ -649,6 +650,7 @@ class Transfer(DataClass):
         )
 
 
+
 class DebitCard(DataClass):
     profile: Profile
     token: str
@@ -683,6 +685,7 @@ class AccountDebit(DataClass):
 class AccountCredit(DataClass):
     id: int
     account: CashAccount
+    transaction: Transaction
     transaction_amount: Decimal
     account_balance: Decimal
     timestamp: datetime.datetime
@@ -691,7 +694,11 @@ class AccountCredit(DataClass):
     def get_from_request_data(request_data: Dict[str, Any]) -> "AccountCredit":
         personal_profile: PersonalProfile = WiseAccount.get(WiseAccountType.PRIMARY).personal_profile
         cash_account: CashAccount = personal_profile.get_cash_account(Currency(request_data["data"]["currency"]))
+        timestamp: datetime.datetime = common.get_timestamp_from_string(request_data["data"]["occurred_at"], "UTC")
+        transaction: Transaction = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
+
         return AccountCredit(id=request_data["data"]["resource"]["id"],
+                             transaction=transaction,
                              account=cash_account,
                              amount=Decimal(request_data["data"]["amount"]),
                              account_balance=Decimal(request_data["data"]["post_transaction_balance_amount"]),
