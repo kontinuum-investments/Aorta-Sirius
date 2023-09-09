@@ -85,7 +85,9 @@ class Server(DataClass):
                            f"Server Name: {self.name}\n"
                            f"Channel Name: {text_channel_name}\n"
                            )
-            return await TextChannel.create(text_channel_name, self)
+            text_channel: TextChannel = await TextChannel.create(text_channel_name, self)
+            self.text_channel_list.append(text_channel)
+            return text_channel
         else:
             raise DuplicateServersFoundException(f"Duplicate channels found\n"
                                                  f"Server Name: {self.name}\n"
