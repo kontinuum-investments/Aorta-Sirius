@@ -28,7 +28,7 @@ def get_version() -> str:
 
 
 def is_production_branch() -> bool:
-    return "production" == os.getenv("GITHUB_REF_NAME")
+    return "production" == os.getenv("GITHUB_REF_NAME") or os.path.isdir("src/aorta_sirius.egg-info")
 
 
 def get_required_packages() -> List[str]:
