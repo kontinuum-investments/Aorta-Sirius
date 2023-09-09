@@ -37,7 +37,7 @@ class WebhookAccountUpdateType(Enum):
     STATE_CHANGE: str = "balances#account-state-change"
 
 
-class Discord:
+class WiseDiscord:
     bot: Bot | None = None
     server: Server | None = None
     wise_channel: TextChannel | None = None
@@ -54,7 +54,7 @@ class Discord:
 
     @classmethod
     async def notify(cls, message: str) -> None:
-        await (await Discord.get_notification_channel()).send_message(message)
+        await (await WiseDiscord.get_notification_channel()).send_message(message)
 
 
 class WiseAccount(DataClass):
@@ -298,16 +298,16 @@ class CashAccount(Account):
         transfer: Transfer = Transfer.model_construct()
         if isinstance(to_account, CashAccount):
             transfer = Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount, is_amount_in_from_currency)
-            await Discord.notify(f"**Intra-Account Transfer**:\n"
+            await WiseDiscord.notify(f"**Intra-Account Transfer**:\n"
                                  f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                  f"From: *{self.currency.value}*\n"
                                  f"To: *{to_account.currency.value}*\n"
                                  f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n"
-                                 )
+                                     )
 
         elif isinstance(to_account, ReserveAccount):
             transfer = Transfer.cash_to_savings_account_transfer(self.profile, self, to_account, amount)
-            await Discord.notify(f"**Intra-Account Transfer**:\n"
+            await WiseDiscord.notify(f"**Intra-Account Transfer**:\n"
                                  f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                  f"From: *{self.currency.value}*\n"
                                  f"To: *{to_account.name}*\n"
@@ -315,7 +315,7 @@ class CashAccount(Account):
 
         elif isinstance(to_account, Recipient):
             transfer = Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount, "" if reference is None else reference, is_amount_in_from_currency)
-            await Discord.notify(f"**Third-Party Transfer**:\n"
+            await WiseDiscord.notify(f"**Third-Party Transfer**:\n"
                                  f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                  f"From: *{self.currency.value}*\n"
                                  f"To: *{to_account.account_holder_name}*\n"
@@ -398,7 +398,7 @@ class ReserveAccount(Account):
                 "Direct inter-currency transfers from a reserve account is not supported")
 
         transfer: Transfer = Transfer.savings_to_cash_account_transfer(self.profile, self, to_account, amount)
-        await Discord.notify(f"**Intra-Account Transfer**:\n"
+        await WiseDiscord.notify(f"**Intra-Account Transfer**:\n"
                              f"*Timestamp*: {get_timestamp_string(datetime.datetime.now())}\n"
                              f"*From*: {self.name}\n"
                              f"*To*: {to_account.currency.value}\n"
