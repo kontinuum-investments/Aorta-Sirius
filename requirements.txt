@@ -6,4 +6,4 @@ msal
 pyjwt>=2.8.0
 aiocache
 apscheduler
-fastapi-users[beanie]
+motor
