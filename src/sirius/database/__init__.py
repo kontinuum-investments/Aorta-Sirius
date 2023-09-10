@@ -15,7 +15,7 @@ db: AsyncIOMotorDatabase | None = None  # type: ignore[valid-type]
 
 async def initialize() -> None:
     global client, db
-    client = motor.motor_asyncio.AsyncIOMotorClient(common.get_environmental_variable(EnvironmentVariable.MONGO_DB_CONNECTION_STRING),
+    client = motor.motor_asyncio.AsyncIOMotorClient(f"{common.get_environmental_variable(EnvironmentVariable.MONGO_DB_CONNECTION_STRING)}&retryWrites=false",
                                                     uuidRepresentation="standard") if client is None else client
     db = client[common.get_environmental_variable(EnvironmentVariable.APPLICATION_NAME)] if db is None else db
 
