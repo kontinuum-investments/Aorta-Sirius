@@ -6,5 +6,4 @@ msal
 pyjwt>=2.8.0
 aiocache
 apscheduler
-cryptography==38.0.4
 fastapi-users[beanie]
