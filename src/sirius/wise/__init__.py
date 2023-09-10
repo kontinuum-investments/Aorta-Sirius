@@ -699,19 +699,21 @@ class DebitCard(DataClass):
 
 
 class AccountDebit(DataClass):
+    wise_id: int
     is_attempted: bool
     is_successful: bool
     timestamp: datetime.datetime
 
     @staticmethod
     def get_from_request_data(request_data: Dict[str, Any]) -> "AccountDebit":
-        return AccountDebit(is_attempted=request_data["data"]["current_state"] == "incoming_payment_waiting",
+        return AccountDebit(wise_id=request_data["data"]["resource"]["id"],
+                            is_attempted=request_data["data"]["current_state"] == "incoming_payment_waiting",
                             is_successful=request_data["data"]["current_state"] == "outgoing_payment_sent",
                             timestamp=request_data["data"]["occurred_at"])
 
 
 class AccountCredit(DataClass):
-    id: int
+    wise_id: int
     account: CashAccount
     transaction: Transaction
     account_balance: Decimal
@@ -724,7 +726,7 @@ class AccountCredit(DataClass):
         timestamp: datetime.datetime = common.get_timestamp_from_string(request_data["data"]["occurred_at"], "UTC")
         transaction: Transaction = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
 
-        return AccountCredit(id=request_data["data"]["resource"]["id"],
+        return AccountCredit(wise_id=request_data["data"]["resource"]["id"],
                              account=cash_account,
                              transaction=transaction,
                              account_balance=Decimal(request_data["data"]["post_transaction_balance_amount"]),
