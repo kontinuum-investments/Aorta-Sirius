@@ -718,8 +718,8 @@ class AccountCredit(DataClass):
     timestamp: datetime.datetime
 
     @staticmethod
-    def get_from_request_data(request_data: Dict[str, Any]) -> "AccountCredit":
-        personal_profile: PersonalProfile = WiseAccount.get(WiseAccountType.PRIMARY).personal_profile
+    def get_from_request_data(request_data: Dict[str, Any], wise_account: WiseAccount) -> "AccountCredit":
+        personal_profile: PersonalProfile = wise_account.personal_profile
         cash_account: CashAccount = personal_profile.get_cash_account(Currency(request_data["data"]["currency"]))
         timestamp: datetime.datetime = common.get_timestamp_from_string(request_data["data"]["occurred_at"], "UTC")
         transaction: Transaction = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
@@ -735,11 +735,11 @@ class AccountCredit(DataClass):
 class WiseWebhook:
 
     @classmethod
-    async def get_balance_update_object(cls, request_data: Dict[str, Any]) -> AccountDebit | AccountCredit | None:
+    async def get_balance_update_object(cls, request_data: Dict[str, Any], wise_account: WiseAccount) -> AccountDebit | AccountCredit | None:
         if request_data["event_type"] == "transfers#state-change":
             return AccountDebit.get_from_request_data(request_data)
         elif request_data["event_type"] == "balances#credit":
-            return AccountCredit.get_from_request_data(request_data)
+            return AccountCredit.get_from_request_data(request_data, wise_account)
 
         return None
 
