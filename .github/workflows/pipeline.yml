@@ -38,7 +38,7 @@ jobs:
         run: sudo apt update && sudo apt install python3.11
 
       - name: Installing Dependencies
-        run: pip install -r requirements.txt && pip install -r requirements-dev.txt
+        run: pip install -r requirements.txt && pip install -r requirements-dev.txt && pip install --force-reinstall "cryptography==38.0.4"
 
       - name: Running MyPy check
         run: mypy . --install-types --non-interactive
