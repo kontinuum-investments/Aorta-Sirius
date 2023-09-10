@@ -731,7 +731,6 @@ class AccountCredit(DataClass):
                              timestamp=request_data["data"]["occurred_at"])
 
 
-#   TODO: Write tests
 class WiseWebhook:
 
     @classmethod
