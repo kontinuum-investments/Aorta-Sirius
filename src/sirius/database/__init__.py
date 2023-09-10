@@ -30,37 +30,45 @@ class DatabaseDocument(DataClass):
     updated_timestamp: datetime.datetime | None = None
     created_timestamp: datetime.datetime | None = None
 
-    async def save(self) -> None:
+    @classmethod
+    async def _get_collection(cls) -> AsyncIOMotorCollection:  # type: ignore[valid-type]
+        await initialize()
         global db
-        collection: AsyncIOMotorCollection = db[self.__class__.__name__]  # type: ignore[valid-type,index]
+        return db[cls.__name__]  # type: ignore[index]
+
+    async def save(self) -> None:
+        collection: AsyncIOMotorCollection = await self._get_collection()  # type: ignore[valid-type]
 
         if self.id is None:
             self.updated_timestamp = datetime.datetime.now()
             object_id: ObjectId = (await collection.insert_one(self.model_dump(exclude={"id"}))).inserted_id  # type: ignore[attr-defined]
-            self._update_model(object_id, self.model_dump(exclude={"id"}))
+            self.__dict__.update(self.model_dump(exclude={"id"}))
+            self.id = object_id
         else:
             self.created_timestamp = datetime.datetime.now()
             await collection.replace_one({"_id": self.id}, self.model_dump(exclude={"id"}))  # type: ignore[attr-defined]
 
     async def delete(self) -> None:
         await initialize()
-        collection: AsyncIOMotorCollection = db[self.__class__.__name__]  # type: ignore[valid-type,index]
+        collection: AsyncIOMotorCollection = await self._get_collection()  # type: ignore[valid-type]
         await collection.delete_one({'_id': self.id})  # type: ignore[attr-defined]
 
-    def _update_model(self, object_id: ObjectId, new_model: Dict[str, Any]) -> None:
-        self.__dict__.update(new_model)
-        self.id = object_id
-
     @classmethod
-    async def get_by_id(cls, object_id: ObjectId) -> Union["DatabaseDocument", None]:
-        await initialize()
-        collection: AsyncIOMotorCollection = db[cls.__name__]  # type: ignore[index,valid-type]
-        object_model: Dict[str, Any] = await collection.find_one({'_id': object_id})  # type: ignore[attr-defined]
-
-        if object_model is None:
-            return None
-
-        object_id = object_model.pop("_id")
-        queried_object: DatabaseDocument = cls(**object_model)
+    def get_model_by_raw_data(cls, raw_data: Dict[Any, Any]) -> "DatabaseDocument":
+        object_id = raw_data.pop("_id")
+        queried_object: DatabaseDocument = cls(**raw_data)
         queried_object.id = object_id
         return queried_object
+
+    @classmethod
+    async def find_by_id(cls, object_id: ObjectId) -> Union["DatabaseDocument", None]:
+        await initialize()
+        collection: AsyncIOMotorCollection = await cls._get_collection()  # type: ignore[valid-type]
+        object_model: Dict[str, Any] = await collection.find_one({'_id': object_id})  # type: ignore[attr-defined]
+        return None if object_model is None else cls.get_model_by_raw_data(object_model)
+
+    @classmethod
+    async def find_by_query(cls, database_document: "DatabaseDocument", query_limit: int = 100) -> List["DatabaseDocument"]:
+        collection: AsyncIOMotorCollection = await cls._get_collection()  # type: ignore[valid-type]
+        cursor = collection.find(database_document.model_dump(exclude={"id"}, exclude_none=True))  # type: ignore[attr-defined]
+        return [cls.get_model_by_raw_data(document) for document in await cursor.to_list(length=query_limit)]
