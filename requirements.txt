@@ -7,3 +7,5 @@ pyjwt>=2.8.0
 aiocache
 apscheduler
 motor
+pyopenssl
+cryptography
