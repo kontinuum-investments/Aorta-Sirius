@@ -23,6 +23,7 @@ class ServerName(Enum):
 
 
 class AortaTextChannels(Enum):
+    DEBUG: str = "logs"
     NOTIFICATION: str = "notification"
     BETELGEUSE: str = "betelgeuse"
     WISE: str = "wise"
