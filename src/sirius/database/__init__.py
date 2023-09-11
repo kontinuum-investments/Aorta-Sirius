@@ -40,12 +40,12 @@ class DatabaseDocument(DataClass):
         collection: AsyncIOMotorCollection = await self._get_collection()  # type: ignore[valid-type]
 
         if self.id is None:
-            self.updated_timestamp = datetime.datetime.now()
+            self.created_timestamp = datetime.datetime.now()
             object_id: ObjectId = (await collection.insert_one(self.model_dump(exclude={"id"}))).inserted_id  # type: ignore[attr-defined]
             self.__dict__.update(self.model_dump(exclude={"id"}))
             self.id = object_id
         else:
-            self.created_timestamp = datetime.datetime.now()
+            self.updated_timestamp = datetime.datetime.now()
             await collection.replace_one({"_id": self.id}, self.model_dump(exclude={"id"}))  # type: ignore[attr-defined]
 
     async def delete(self) -> None:
