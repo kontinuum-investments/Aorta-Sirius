@@ -38,8 +38,7 @@ jobs:
         run: sudo apt update && sudo apt install python3.11
 
       - name: Installing Dependencies
-        # TODO: Force re-installing to avoid "AttributeError: module 'lib' has no attribute 'OpenSSL_add_all_algorithms'" error
-        run: pip install -r requirements.txt && pip install -r requirements-dev.txt && pip install --upgrade --force-reinstall cryptography pyOpenSSL
+        run: pip install -r requirements.txt && pip install -r requirements-dev.txt
 
       - name: Running MyPy check
         run: mypy . --install-types --non-interactive
