@@ -715,7 +715,7 @@ class AccountDebit(DataClass):
 class AccountCredit(DataClass):
     wise_id: int
     account: CashAccount
-    transaction: Transaction
+    transaction: Transaction | None
     account_balance: Decimal
     timestamp: datetime.datetime
 
@@ -724,7 +724,11 @@ class AccountCredit(DataClass):
         personal_profile: PersonalProfile = wise_account.personal_profile
         cash_account: CashAccount = personal_profile.get_cash_account(Currency(request_data["data"]["currency"]))
         timestamp: datetime.datetime = common.get_timestamp_from_string(request_data["data"]["occurred_at"], "UTC")
-        transaction: Transaction = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
+
+        try:
+            transaction: Transaction | None = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
+        except StopIteration:
+            transaction = None
 
         return AccountCredit(wise_id=request_data["data"]["resource"]["id"],
                              account=cash_account,
