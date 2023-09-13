@@ -39,7 +39,7 @@ jobs:
 
       - name: Installing Dependencies
         # TODO: Force re-installing to avoid "AttributeError: module 'lib' has no attribute 'OpenSSL_add_all_algorithms'" error
-        run: pip install -r requirements.txt && pip install -r requirements-dev.txt && pip install --upgrade --force-reinstall cryptography==38.0.4 pyOpenSSL==22.1.0
+        run: pip install -r requirements.txt && pip install -r requirements-dev.txt && pip install --upgrade --force-reinstall cryptography pyOpenSSL
 
       - name: Running MyPy check
         run: mypy . --install-types --non-interactive
