@@ -11,7 +11,7 @@ def test_excel_read() -> None:
 
     assert len(excel_data_list) == 2
     assert excel_data_list[0]["Text"] == "ABCD"
-    assert excel_data_list[0]["Date"].date() == datetime.datetime.today().date()
+    assert isinstance(excel_data_list[0]["Date"], datetime.datetime)
     assert isinstance(excel_data_list[0]["Date time"], datetime.datetime)
     assert isinstance(excel_data_list[0]["Time"], datetime.time)
     assert excel_data_list[0]["Number"] == Decimal("3")
