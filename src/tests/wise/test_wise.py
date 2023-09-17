@@ -11,8 +11,6 @@ from sirius.wise import WiseAccount, WiseAccountType, Transfer, CashAccount, Res
     Transaction, RecipientNotFoundException, Quote
 
 
-#   TODO: Create fixtures
-
 @pytest.mark.asyncio
 async def test_cash_account_simulate_top_up() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)

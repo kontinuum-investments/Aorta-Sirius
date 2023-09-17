@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 
 import openpyxl
 from _decimal import Decimal
+from openpyxl.worksheet.worksheet import Worksheet
 
 from sirius.exceptions import SDKClientException
 
@@ -10,17 +11,25 @@ def _get_cell_value_from_cell(cell_value: Any) -> Any:
     return Decimal(str(cell_value)) if isinstance(cell_value, (int, float)) and not isinstance(cell_value, bool) else cell_value
 
 
-def get_excel_data(file_path: str, sheet_name: str) -> List[Dict[Any, Any]]:
+def _get_worksheet(file_path: str, sheet_name: str) -> Worksheet:
     try:
         workbook = openpyxl.load_workbook(filename=file_path, data_only=True)
     except FileNotFoundError:
         raise SDKClientException(f"Excel file not found in: {file_path}")
 
+    if sheet_name not in workbook:
+        raise SDKClientException(f"Excel sheet not found\n: "
+                                 f"File path: {file_path}\n"
+                                 f"Sheet name: {sheet_name}")
+    return workbook[sheet_name]
+
+
+def get_excel_data(file_path: str, sheet_name: str) -> List[Dict[Any, Any]]:
     excel_data_list: List[Dict[Any, Any]] = []
     headers: List[Any] = []
 
     row_number: int = 0
-    for row in workbook[sheet_name]:
+    for row in _get_worksheet(file_path, sheet_name):
         if row_number == 0:
             headers = [cell.value for cell in row]
 
@@ -39,13 +48,8 @@ def get_excel_data(file_path: str, sheet_name: str) -> List[Dict[Any, Any]]:
 
 
 def get_key_value_pair(file_path: str, sheet_name: str) -> Dict[Any, Any]:
-    try:
-        workbook = openpyxl.load_workbook(filename=file_path, data_only=True)
-    except FileNotFoundError:
-        raise SDKClientException(f"Excel file not found in: {file_path}")
-
     key_value_pair: Dict[Any, Any] = {}
-    for row in workbook[sheet_name]:
+    for row in _get_worksheet(file_path, sheet_name):
         key_value_pair[str(row[0].value)] = _get_cell_value_from_cell(row[1].value)
 
     return key_value_pair
