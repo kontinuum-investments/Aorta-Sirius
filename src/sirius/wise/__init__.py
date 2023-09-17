@@ -108,39 +108,48 @@ class Profile(DataClass):
         return self.wise_account.http_session
 
     def _initialize(self) -> None:
-        cash_account_list: List["CashAccount"] = CashAccount.get_all(self)
-        reserve_account_list: List["ReserveAccount"] = ReserveAccount.get_all(self)
-        recipient_list: List["Recipient"] = Recipient.get_all(self)
+        cash_account_to_update_list: List["CashAccount"] = CashAccount.get_all(self)
+        reserve_account_to_update_list: List["ReserveAccount"] = ReserveAccount.get_all(self)
+        recipient_to_update_list: List["Recipient"] = Recipient.get_all(self)
 
         if self.cash_account_list is None:
-            self.cash_account_list = cash_account_list
+            self.cash_account_list = cash_account_to_update_list
         else:
             for original_cash_account in self.cash_account_list:
                 try:
-                    new_cash_account: CashAccount = next(filter(lambda c: (c.id == original_cash_account.id), cash_account_list))
+                    new_cash_account: CashAccount = next(filter(lambda c: (c.id == original_cash_account.id), cash_account_to_update_list))
                     original_cash_account.__dict__.update(new_cash_account.model_dump())
+                    cash_account_to_update_list.remove(new_cash_account)
                 except StopIteration:
                     self.cash_account_list.remove(original_cash_account)
 
+            [self.cash_account_list.append(new_cash_account) for new_cash_account in cash_account_to_update_list]   # type: ignore[func-returns-value]
+
         if self.reserve_account_list is None:
-            self.reserve_account_list = reserve_account_list
+            self.reserve_account_list = reserve_account_to_update_list
         else:
             for original_reserve_account in self.reserve_account_list:
                 try:
-                    new_reserve_account: ReserveAccount = next(filter(lambda r: (r.id == original_reserve_account.id), reserve_account_list))
+                    new_reserve_account: ReserveAccount = next(filter(lambda r: (r.id == original_reserve_account.id), reserve_account_to_update_list))
                     original_reserve_account.__dict__.update(new_reserve_account.model_dump())
+                    reserve_account_to_update_list.remove(new_reserve_account)
                 except StopIteration:
                     self.reserve_account_list.remove(original_reserve_account)
 
+            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in reserve_account_to_update_list]   # type: ignore[func-returns-value]
+
         if self.recipient_list is None:
-            self.recipient_list = recipient_list
+            self.recipient_list = recipient_to_update_list
         else:
             for original_recipient in self.recipient_list:
                 try:
-                    new_recipient: Recipient = next(filter(lambda r: (r.id == original_recipient.id), recipient_list))
+                    new_recipient: Recipient = next(filter(lambda r: (r.id == original_recipient.id), recipient_to_update_list))
                     original_recipient.__dict__.update(new_recipient.model_dump())
+                    recipient_to_update_list.remove(new_recipient)
                 except StopIteration:
                     self.recipient_list.remove(original_recipient)
+
+            [self.recipient_list.append(new_recipient) for new_recipient in recipient_to_update_list]   # type: ignore[func-returns-value]
 
     def get_cash_account(self, currency: Currency, is_create_if_unavailable: bool = False) -> "CashAccount":
         try:
@@ -176,11 +185,9 @@ class Profile(DataClass):
 
     @common.only_in_dev
     def _complete_all_transfers(self) -> None:
-        cash_account: CashAccount = self.get_cash_account(Currency.USD)
-        http_response: HTTPResponse = self.http_session.get(f"{constants.ENDPOINT__TRANSFER__GET_ALL.replace('$profileId', str(self.id))}&status=processing&createdDateStart=2021-01-01&limit=200")
-
-        for data in http_response.data:
-            cash_account._simulate_completed_transfer(self.http_session, data["id"])
+        for cash_account in self.cash_account_list:
+            http_response: HTTPResponse = self.http_session.get(f"{constants.ENDPOINT__TRANSFER__GET_ALL.replace('$profileId', str(self.id))}&status=processing&createdDateStart=2021-01-01&limit=200")
+            [cash_account._simulate_completed_transfer(data["id"]) for data in http_response.data]
 
     @staticmethod
     def get_all(wise_account: WiseAccount) -> List["Profile"]:
@@ -193,6 +200,17 @@ class Profile(DataClass):
             profile_list.append(profile)
 
         return profile_list
+
+    @common.only_in_dev
+    async def _reset(self) -> None:
+        self._complete_all_transfers()
+
+        for reserve_account in self.reserve_account_list:
+            await reserve_account._set_balance(Decimal("0"))
+            reserve_account.close()
+
+        # TODO: Change this to reset all currencies rather than just NZD
+        [await cash_account._set_balance(Decimal("0")) for cash_account in list(filter(lambda c: c.currency == Currency.NZD, self.cash_account_list))]
 
 
 class PersonalProfile(Profile):
