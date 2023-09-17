@@ -11,7 +11,11 @@ def _get_cell_value_from_cell(cell_value: Any) -> Any:
 
 
 def get_excel_data(file_path: str, sheet_name: str) -> List[Dict[Any, Any]]:
-    workbook = openpyxl.load_workbook(filename=file_path, data_only=True)
+    try:
+        workbook = openpyxl.load_workbook(filename=file_path, data_only=True)
+    except FileNotFoundError:
+        raise SDKClientException(f"Excel file not found in: {file_path}")
+
     excel_data_list: List[Dict[Any, Any]] = []
     headers: List[Any] = []
 
@@ -35,7 +39,11 @@ def get_excel_data(file_path: str, sheet_name: str) -> List[Dict[Any, Any]]:
 
 
 def get_key_value_pair(file_path: str, sheet_name: str) -> Dict[Any, Any]:
-    workbook = openpyxl.load_workbook(filename=file_path, data_only=True)
+    try:
+        workbook = openpyxl.load_workbook(filename=file_path, data_only=True)
+    except FileNotFoundError:
+        raise SDKClientException(f"Excel file not found in: {file_path}")
+
     key_value_pair: Dict[Any, Any] = {}
     for row in workbook[sheet_name]:
         key_value_pair[str(row[0].value)] = _get_cell_value_from_cell(row[1].value)
