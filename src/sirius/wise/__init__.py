@@ -413,7 +413,10 @@ class CashAccount(Account):
 
     @staticmethod
     def open(profile: Profile, currency: Currency) -> "CashAccount":
-        cash_account: CashAccount = cast(CashAccount, Account.abstract_open(profile, None, currency, False))
+        account: Account = Account.abstract_open(profile, None, currency, False)
+        cash_account: CashAccount = CashAccount.model_construct(**account.model_dump())
+        cash_account.profile = profile
+
         profile.cash_account_list.append(cash_account)
         return cash_account
 
