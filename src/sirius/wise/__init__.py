@@ -497,7 +497,10 @@ class ReserveAccount(Account):
 
     @staticmethod
     def open(profile: Profile, account_name: str, currency: Currency) -> "ReserveAccount":
-        reserve_account: ReserveAccount = cast(ReserveAccount, Account.abstract_open(profile, account_name, currency, True))
+        account: Account = Account.abstract_open(profile, account_name, currency, True)
+        reserve_account: ReserveAccount = ReserveAccount.model_construct(**account.model_dump())
+        reserve_account.profile = profile
+
         profile.reserve_account_list.append(reserve_account)
         return reserve_account
 
