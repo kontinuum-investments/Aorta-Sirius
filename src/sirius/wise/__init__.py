@@ -253,9 +253,10 @@ class Account(DataClass):
                                                                                                    str(self.id)))
         self.profile.wise_account._initialize()
 
-    def get_transactions(self, from_time: datetime.datetime | None = None, to_time: datetime.datetime | None = None) -> List["Transaction"]:
+    def get_transactions(self, from_time: datetime.datetime | None = None, to_time: datetime.datetime | None = None, number_of_past_hours: int | None = None) -> List["Transaction"]:
+        number_of_past_hours = 24 if number_of_past_hours is None else number_of_past_hours
         if from_time is None:
-            from_time = datetime.datetime.now() - datetime.timedelta(days=1)
+            from_time = datetime.datetime.now() - datetime.timedelta(days=number_of_past_hours)
 
         if to_time is None:
             to_time = datetime.datetime.now()
