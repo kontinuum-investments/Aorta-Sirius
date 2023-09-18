@@ -8,7 +8,7 @@ from sirius.exceptions import SDKClientException
 
 
 def _get_cell_value_from_cell(cell_value: Any) -> Any:
-    return Decimal(str(cell_value)) if isinstance(cell_value, (int, float)) and not isinstance(cell_value, bool) else cell_value
+    return Decimal(str(round(cell_value, 6))) if isinstance(cell_value, (int, float)) and not isinstance(cell_value, bool) else cell_value
 
 
 def _get_worksheet(file_path: str, sheet_name: str) -> Worksheet:
