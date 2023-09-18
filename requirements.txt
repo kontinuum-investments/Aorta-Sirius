@@ -8,6 +8,6 @@ aiocache
 apscheduler
 motor
 pyopenssl
-cryptography==38.0.4
+cryptography==41.0.3
 pyOpenSSL==22.1.0
 openpyxl
