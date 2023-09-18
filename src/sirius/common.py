@@ -3,11 +3,13 @@ import datetime
 import inspect
 import os
 import socket
+import tempfile
 import threading
 from enum import Enum
 from typing import Callable, Any, Dict
 
 import pytz
+import requests
 from _decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
@@ -76,11 +78,12 @@ class DataClass(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-def get_environmental_variable(environmental_variable: EnvironmentVariable) -> str:
-    value: str | None = os.getenv(environmental_variable.value)
+def get_environmental_variable(environmental_variable: EnvironmentVariable | str) -> str:
+    environmental_variable_key: str = environmental_variable.value if isinstance(environmental_variable, EnvironmentVariable) else environmental_variable
+    value: str | None = os.getenv(environmental_variable_key)
     if value is None:
         raise ApplicationException(
-            f"Environment variable with the key is not available: {environmental_variable.value}")
+            f"Environment variable with the key is not available: {environmental_variable_key}")
 
     return value
 
@@ -170,3 +173,13 @@ def get_servers_fqdn() -> str:
 def get_timestamp_from_string(timestamp_string: str, timezone_string: str | None = None) -> datetime.datetime:
     timestamp: datetime.datetime = datetime.datetime.strptime(timestamp_string, "%Y-%m-%dT%H:%M:%SZ")
     return timestamp if timezone_string is None else timestamp.replace(tzinfo=pytz.timezone(timezone_string))
+
+
+def get_new_temp_file_path() -> str:
+    return tempfile.NamedTemporaryFile(delete=False).name
+
+
+def download_file_from_url(url: str) -> str:
+    temp_file_path: str = get_new_temp_file_path()
+    open(temp_file_path, "wb").write(requests.get(url).content)
+    return temp_file_path
