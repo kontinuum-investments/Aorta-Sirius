@@ -152,8 +152,8 @@ class SyncHTTPSession(HTTPSession):
         return instance
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "GET")
-    def get(self, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> HTTPResponse:
-        http_response: HTTPResponse = HTTPResponse(self.client.get(url, params=query_params, headers=headers))
+    def get(self, url: str, query_params: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None, ) -> HTTPResponse:
+        http_response: HTTPResponse = HTTPResponse(self.client.get(url, params=query_params, headers=headers, timeout=60))
         if not http_response.is_successful:
             SyncHTTPSession.raise_http_exception(http_response)
 
@@ -161,7 +161,7 @@ class SyncHTTPSession(HTTPSession):
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "PUT")
     def put(self, url: str, data: Dict[str, Any], headers: Dict[str, Any] | None = None) -> HTTPResponse:
-        http_response: HTTPResponse = HTTPResponse(self.client.put(url, data=data, headers=headers))
+        http_response: HTTPResponse = HTTPResponse(self.client.put(url, data=data, headers=headers, timeout=60))
         if not http_response.is_successful:
             SyncHTTPSession.raise_http_exception(http_response)
 
@@ -177,7 +177,7 @@ class SyncHTTPSession(HTTPSession):
                 headers = {}
             headers["content-type"] = "application/json"
 
-        http_response: HTTPResponse = HTTPResponse(self.client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
+        http_response: HTTPResponse = HTTPResponse(self.client.post(url, data=data_string, headers=headers, timeout=60))  # type: ignore[arg-type]
         if not http_response.is_successful:
             SyncHTTPSession.raise_http_exception(http_response)
 
@@ -185,7 +185,7 @@ class SyncHTTPSession(HTTPSession):
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
     def delete(self, url: str, headers: Dict[str, Any] | None = None) -> HTTPResponse:
-        http_response: HTTPResponse = HTTPResponse(self.client.delete(url, headers=headers))
+        http_response: HTTPResponse = HTTPResponse(self.client.delete(url, headers=headers, timeout=60))
         if not http_response.is_successful:
             SyncHTTPSession.raise_http_exception(http_response)
 
