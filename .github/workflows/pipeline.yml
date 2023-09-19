@@ -26,39 +26,49 @@ jobs:
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
+  Validate:
+    runs-on: ubuntu-latest
+    environment: : CI/CD Pipeline
+      steps:
+        - name: Check out repository code
+          uses: actions/checkout@v3
+
+        - name: Installing Python
+          run: sudo apt update && sudo apt install python3.11
+
+        - name: Installing Dependencies
+          run: pip install -r requirements.txt && pip install -r requirements-dev.txt
+
+        - name: Running MyPy check
+          run: mypy . --install-types --non-interactive
+
+        - name: Running Tests
+          shell: bash
+          env:
+            DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+            SENTRY_URL: ${{ secrets.SENTRY_URL }}
+            WISE_PRIMARY_ACCOUNT_API_KEY: ${{ secrets.WISE_PRIMARY_ACCOUNT_API_KEY }}
+            WISE_SECONDARY_ACCOUNT_API_KEY: ${{ secrets.WISE_SECONDARY_ACCOUNT_API_KEY }}
+            APPLICATION_NAME: ${{ vars.APPLICATION_NAME }}
+            ENVIRONMENT: ${{ vars.ENVIRONMENT }}
+            MONGO_DB_CONNECTION_STRING: ${{ secrets.MONGO_DB_CONNECTION_STRING }}
+          run: pytest --cov sirius src/tests --cov-report xml
+
+        - name: Upload coverage reports to Codecov
+          uses: codecov/codecov-action@v3
+          env:
+            CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
 
   Deploy-to-PyPi:
+    needs: Validate
     runs-on: ubuntu-latest
-    environment: CI/CD Pipeline
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
 
       - name: Installing Python
         run: sudo apt update && sudo apt install python3.11
-
-      - name: Installing Dependencies
-        run: pip install -r requirements.txt && pip install -r requirements-dev.txt
-
-      - name: Running MyPy check
-        run: mypy . --install-types --non-interactive
-
-      - name: Running Tests
-        shell: bash
-        env:
-          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
-          SENTRY_URL: ${{ secrets.SENTRY_URL }}
-          WISE_PRIMARY_ACCOUNT_API_KEY: ${{ secrets.WISE_PRIMARY_ACCOUNT_API_KEY }}
-          WISE_SECONDARY_ACCOUNT_API_KEY: ${{ secrets.WISE_SECONDARY_ACCOUNT_API_KEY }}
-          APPLICATION_NAME: ${{ vars.APPLICATION_NAME }}
-          ENVIRONMENT: ${{ vars.ENVIRONMENT }}
-          MONGO_DB_CONNECTION_STRING: ${{ secrets.MONGO_DB_CONNECTION_STRING }}
-        run: pytest --cov sirius src/tests --cov-report xml
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v3
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Packaging the SDK
         run: python3 setup.py sdist
