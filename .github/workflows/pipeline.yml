@@ -28,7 +28,7 @@ jobs:
 
   Validate:
     runs-on: ubuntu-latest
-    environment: : CI/CD Pipeline
+    environment: CI/CD Pipeline
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
