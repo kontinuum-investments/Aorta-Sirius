@@ -261,6 +261,6 @@ async def test_get_invalid_recipient() -> None:
 @pytest.mark.asyncio
 async def test_get_transactions() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
-    usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
-    transactions_list: List[Transaction] = usd_account.get_transactions(from_time=datetime.datetime.now() - datetime.timedelta(days=365))
+    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
+    transactions_list: List[Transaction] = nzd_account.get_transactions(from_time=datetime.datetime.now() - datetime.timedelta(days=30))
     assert transactions_list[0].amount is not None
