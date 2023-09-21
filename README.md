@@ -20,6 +20,7 @@ The Global Python SDK for the Central Finite Curve
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_WHATSAPP_NUMBER`
+- `TWILIO_SMS_NUMBER`
 
 ## CI/CD Pipeline
 ## Required Repository Secrets

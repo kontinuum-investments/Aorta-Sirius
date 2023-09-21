@@ -4,7 +4,6 @@ from twilio.rest import Client
 from twilio.rest.api.v2010.account.message import MessageInstance
 
 from sirius import common
-from sirius.communication.whatsapp import constants
 from sirius.constants import EnvironmentVariable
 
 twillo_client: Client | None = None
@@ -20,6 +19,6 @@ def _sync_send_message(phone_number_string: str, message: str) -> MessageInstanc
     twillo_auth_token: str = common.get_environmental_variable(EnvironmentVariable.TWILIO_AUTH_TOKEN)
     twillo_client = Client(twillo_account_sid, twillo_auth_token) if twillo_client is None else twillo_client
 
-    return twillo_client.messages.create(from_=f"whatsapp:{common.get_environmental_variable(EnvironmentVariable.TWILIO_WHATSAPP_NUMBER)}",
+    return twillo_client.messages.create(from_=f"{common.get_environmental_variable(EnvironmentVariable.TWILIO_SMS_NUMBER)}",
                                          body=message,
-                                         to=f"whatsapp:{phone_number_string}")
+                                         to=f"{phone_number_string}")
