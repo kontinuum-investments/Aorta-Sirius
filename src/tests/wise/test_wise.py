@@ -251,11 +251,11 @@ async def test_get_invalid_recipient() -> None:
         wise_account.personal_profile.get_recipient("A")
 
 
-#
-# @pytest.mark.asyncio
-# async def test_get_debit_card() -> None:
-#     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
-#     assert wise_account.personal_profile.debit_card_list[0].token is not None
+@pytest.mark.skip(reason="Wise responds with a 404 HTTP error for some reason")
+@pytest.mark.asyncio
+async def test_get_debit_card() -> None:
+    wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
+    assert wise_account.personal_profile.debit_card_list[0].token is not None
 
 
 @pytest.mark.skip(reason="Wise responds with a 500 HTTP error for some reason")
