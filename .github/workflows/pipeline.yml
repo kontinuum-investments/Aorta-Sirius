@@ -26,8 +26,7 @@ jobs:
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
-
-  Deploy-to-PyPi:
+  Validate:
     runs-on: ubuntu-latest
     environment: CI/CD Pipeline
     steps:
@@ -59,6 +58,17 @@ jobs:
         uses: codecov/codecov-action@v3
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+
+  Deploy-to-PyPi:
+    needs: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+
+      - name: Installing Python
+        run: sudo apt update && sudo apt install python3.11 twine
 
       - name: Packaging the SDK
         run: python3 setup.py sdist

@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import time
 from enum import Enum
@@ -134,9 +135,9 @@ class TextChannel(Channel):
         super().__init__(**kwargs)
 
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Send Message")
-    async def send_message(self, message: str) -> "Message":
+    async def send_message(self, message: str) -> None:
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
-        return await HTTPModel.post_return_one(Message, url, data={"content": message})  # type: ignore[return-value]
+        asyncio.ensure_future(HTTPModel.post_return_one(Message, url, data={"content": message}))
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Text Channels")
