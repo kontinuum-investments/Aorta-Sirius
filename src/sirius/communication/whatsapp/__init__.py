@@ -1,6 +1,5 @@
 import asyncio
 
-from greenletio import async_
 from twilio.rest import Client
 from twilio.rest.api.v2010.account.message import MessageInstance
 
