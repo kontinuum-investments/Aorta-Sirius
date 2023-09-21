@@ -11,4 +11,4 @@ pyopenssl
 cryptography==38.0.4
 pyOpenSSL==22.1.0
 openpyxl
-twillo
+twilio

@@ -17,9 +17,9 @@ The Global Python SDK for the Central Finite Curve
 - `ENTRA_ID_CLIENT_ID`
 - `ENTRA_ID_TENANT_ID`
 - `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
-- `TWILLO_AUTH_TOKEN`
-- `TWILLO_ACCOUNT_SID`
-- `TWILLO_WHATSAPP_NUMBER`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_WHATSAPP_NUMBER`
 
 ## CI/CD Pipeline
 ## Required Repository Secrets
