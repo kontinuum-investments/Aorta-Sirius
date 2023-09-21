@@ -136,6 +136,9 @@ class TextChannel(Channel):
 
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Send Message")
     async def send_message(self, message: str) -> None:
+        if common.is_ci_cd_pipeline_environment():
+            return
+
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
         asyncio.ensure_future(HTTPModel.post_return_one(Message, url, data={"content": message}))
 
