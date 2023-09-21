@@ -14,9 +14,12 @@ The Global Python SDK for the Central Finite Curve
 - `WISE_PRIMARY_ACCOUNT_API_KEY`
 - `WISE_SECONDARY_ACCOUNT_API_KEY`
 - `MONGO_DB_CONNECTION_STRING`
-- `ENTRA_ID_CLIENT_ID` - Entra ID Client ID
-- `ENTRA_ID_TENANT_ID` - Entra ID Tenant ID
+- `ENTRA_ID_CLIENT_ID`
+- `ENTRA_ID_TENANT_ID`
 - `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
+- `TWILLO_AUTH_TOKEN`
+- `TWILLO_ACCOUNT_SID`
+- `TWILLO_WHATSAPP_NUMBER`
 
 ## CI/CD Pipeline
 ## Required Repository Secrets
