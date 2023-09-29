@@ -9,9 +9,10 @@ from sirius import application_performance_monitoring, common
 from sirius.application_performance_monitoring import Operation
 from sirius.common import DataClass
 from sirius.communication.discord import constants
-from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException
+from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException, RoleNotFoundException
 from sirius.constants import EnvironmentVariable
-from sirius.http_requests import HTTPModel, AsyncHTTPSession
+from sirius.exceptions import OperationNotSupportedException
+from sirius.http_requests import HTTPModel, AsyncHTTPSession, HTTPResponse
 
 logger: Logger = application_performance_monitoring.get_logger()
 AsyncHTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
@@ -28,6 +29,12 @@ class AortaTextChannels(Enum):
     NOTIFICATION: str = "notification"
     BETELGEUSE: str = "betelgeuse"
     WISE: str = "wise"
+
+
+class RoleType(Enum):
+    EVERYONE: str = "@everyone"
+    BOT: str = "Bot"
+    OTHER: str = ""
 
 
 class Bot(DataClass):
@@ -69,11 +76,13 @@ class Server(DataClass):
     id: int
     name: str
     text_channel_list: List["TextChannel"] = []
+    user_list: List["User"] = []
+    role_list: List["Role"] = []
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
-    async def get_text_channel(self, text_channel_name: str) -> "TextChannel":
+    async def get_text_channel(self, text_channel_name: str, is_public_channel: bool = False) -> "TextChannel":
         if len(self.text_channel_list) == 0:
             self.text_channel_list = await TextChannel.get_all(self)
 
@@ -87,7 +96,7 @@ class Server(DataClass):
                            f"Server Name: {self.name}\n"
                            f"Channel Name: {text_channel_name}\n"
                            )
-            text_channel: TextChannel = await TextChannel.create(text_channel_name, self)
+            text_channel: TextChannel = await TextChannel.create(text_channel_name, self, is_public_channel)
             self.text_channel_list.append(text_channel)
             return text_channel
         else:
@@ -95,6 +104,32 @@ class Server(DataClass):
                                                  f"Server Name: {self.name}\n"
                                                  f"Channel Name: {text_channel_name}\n"
                                                  f"Number of channels: {len(text_channel_list)}\n")
+
+    async def get_user(self, username: str) -> "User":
+        self.user_list = await User.get_all(self) if len(self.user_list) == 0 else self.user_list
+
+        try:
+            return next(filter(lambda u: u.username == username, self.user_list))
+        except StopIteration:
+            raise RoleNotFoundException(f"User not found\n"
+                                        f"Server Name: {self.name}\n"
+                                        f"Username: {username}")
+
+    async def get_server_owner(self) -> "User":
+        return await self.get_user(common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_OWNER_USERNAME))
+
+    async def get_role(self, role_type: RoleType) -> "Role":
+        if role_type == RoleType.OTHER:
+            raise OperationNotSupportedException("OTHER Role Type searches are not allowed")
+
+        self.role_list = await Role.get_all(self) if len(self.role_list) == 0 else self.role_list
+
+        try:
+            return next(filter(lambda r: r.role_type == role_type, self.role_list))
+        except StopIteration:
+            raise RoleNotFoundException(f"User not found\n"
+                                        f"Server Name: {self.name}\n"
+                                        f"Role Type: {role_type.value}")
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Get all Servers")
@@ -105,6 +140,51 @@ class Server(DataClass):
     def get_default_server_name() -> str:
         server_name: str = common.get_application_name()
         return server_name if common.is_production_environment() else f"{server_name} [Dev]"
+
+
+class User(DataClass):
+    id: int
+    username: str
+    name: str
+    is_bot: bool
+    server: Server
+
+    @staticmethod
+    async def get_all(server: Server) -> List["User"]:
+        url: str = constants.ENDPOINT__SERVER__GET_ALL_USERS.replace("$serverID", str(server.id))
+        http_session: AsyncHTTPSession = AsyncHTTPSession(url)
+        response: HTTPResponse = await http_session.get(url)
+        return [User(id=data["user"]["id"],
+                     username=data["user"]["username"],
+                     name=data["user"]["global_name"],
+                     is_bot=data["user"]["bot"] if "bot" in data["user"] else False,
+                     server=server) for data in response.data]
+
+
+class Role(DataClass):
+    id: int
+    role_type: RoleType
+    permissions: str
+    server: Server
+
+    @staticmethod
+    async def get_all(server: Server) -> List["Role"]:
+        role_list: List[Role] = []
+        url: str = constants.ENDPOINT__SERVER__GET_ALL_ROLES.replace("$serverID", str(server.id))
+        http_session: AsyncHTTPSession = AsyncHTTPSession(url)
+        response: HTTPResponse = await http_session.get(url)
+
+        for data in response.data:
+            try:
+                role_type: RoleType = RoleType(data["name"])
+            except ValueError:
+                role_type = RoleType.OTHER
+
+            role_list.append(Role(id=data["id"],
+                                  role_type=role_type,
+                                  permissions=data["permissions"],
+                                  server=server))
+        return role_list
 
 
 class Channel(DataClass):
@@ -123,9 +203,23 @@ class Channel(DataClass):
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create Channel")
-    async def create(cls, channel_name: str, server: Server, type_id: int) -> "Channel":
+    async def create(cls, channel_name: str, server: Server, type_id: int, is_public_channel: bool = False) -> "Channel":
         url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
         data: Dict[str, Any] = {"name": channel_name, "type": type_id}
+
+        if not is_public_channel:
+            data["permission_overwrites"] = [{
+                "id": str((await server.get_server_owner()).id),
+                "type": 1,
+                "allow": 1024,
+                "deny": 0
+            }, {
+                "id": str((await server.get_role(RoleType.EVERYONE)).id),
+                "type": 0,
+                "allow": 0,
+                "deny": 1024
+            }]
+
         return await HTTPModel.post_return_one(cls, url, data=data)  # type: ignore[return-value]
 
 
@@ -150,8 +244,8 @@ class TextChannel(Channel):
 
     @classmethod
     @application_performance_monitoring.transaction(Operation.AORTA_SIRIUS, "Create a Text Channel")
-    async def create(cls, text_channel_name: str, server: Server, type_id: int = 0) -> "TextChannel":
-        channel: Channel = await Channel.create(text_channel_name, server, type_id)
+    async def create(cls, text_channel_name: str, server: Server, type_id: int = 0, is_public_channel: bool = False) -> "TextChannel":
+        channel: Channel = await Channel.create(text_channel_name, server, type_id, is_public_channel)
         return TextChannel(**channel.model_dump())
 
     @staticmethod
