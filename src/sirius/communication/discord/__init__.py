@@ -9,13 +9,12 @@ from typing import List, Dict, Any
 from pydantic import PrivateAttr
 
 from sirius import application_performance_monitoring, common
-from sirius.application_performance_monitoring import Operation
 from sirius.common import DataClass
 from sirius.communication.discord import constants
 from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException, RoleNotFoundException
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import OperationNotSupportedException
-from sirius.http_requests import HTTPModel, AsyncHTTPSession, HTTPResponse, ClientSideException
+from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
 
 logger: Logger = application_performance_monitoring.get_logger()
 
@@ -194,7 +193,7 @@ class Server(DataClass):
                            f"Server Name: {self.name}\n"
                            f"Channel Name: {text_channel_name}\n"
                            )
-            text_channel: TextChannel = await TextChannel.create(text_channel_name, self, is_public_channel)
+            text_channel: TextChannel = await TextChannel.create(text_channel_name, self, is_public_channel=is_public_channel)
             self.text_channel_list.append(text_channel)
             return text_channel
         else:
