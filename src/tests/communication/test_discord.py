@@ -1,7 +1,15 @@
 import pytest
 
-from sirius.communication import sms
-from sirius.communication.discord import Bot, Server, RoleType
+from sirius.communication.discord import Bot, Server, RoleType, TextChannel
+
+
+@pytest.mark.asyncio
+async def test_create_text_channel() -> None:
+    bot: Bot = await Bot.get()
+    server: Server = await bot.get_server()
+    text_channel: TextChannel = await server.get_text_channel("test")
+    assert text_channel is not None
+    await text_channel.delete()
 
 
 @pytest.mark.asyncio

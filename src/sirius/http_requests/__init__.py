@@ -31,7 +31,7 @@ class HTTPResponse:
         self.headers = response.headers
         self.cookies = response.cookies
 
-        if self.is_successful and self.response_text is not None and self.response_text != "":
+        if self.response_text is not None and self.response_text != "":
             self.data = self.response.json()
 
         super().__init__(*args, **kwargs)
@@ -50,9 +50,9 @@ class HTTPSession:
                              f"Response Text: {http_response.response_text}"
 
         if 400 <= http_response.response_code < 500:
-            raise ClientSideException(error_message)
+            raise ClientSideException(error_message, data={"http_response": http_response})
         else:
-            raise ServerSideException(error_message)
+            raise ServerSideException(error_message, data={"http_response": http_response})
 
 
 class AsyncHTTPSession(HTTPSession):
@@ -114,7 +114,7 @@ class AsyncHTTPSession(HTTPSession):
 
         return http_response
 
-    @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
+    # @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
     async def delete(self, url: str, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.delete(url, headers=headers))
         if not http_response.is_successful:
