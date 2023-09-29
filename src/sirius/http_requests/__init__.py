@@ -114,7 +114,7 @@ class AsyncHTTPSession(HTTPSession):
 
         return http_response
 
-    # @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
+    @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
     async def delete(self, url: str, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.delete(url, headers=headers))
         if not http_response.is_successful:
