@@ -317,7 +317,7 @@ class Channel(DataClass):
 
     @classmethod
     async def get_all_channels(cls, server: Server) -> List["Channel"]:
-        url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
+        url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("$serverID", str(server.id))
         response: HTTPResponse = await server.http_session.get(url)
 
         return [Channel(id=data["id"],
@@ -327,7 +327,7 @@ class Channel(DataClass):
 
     @classmethod
     async def create(cls, channel_name: str, server: Server, type_id: int, is_public_channel: bool = False) -> "Channel":
-        url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("<Server_ID>", str(server.id))
+        url: str = constants.ENDPOINT__CHANNEL__CREATE_CHANNEL_OR_GET_ALL_CHANNELS.replace("$serverID", str(server.id))
         data: Dict[str, Any] = {"name": channel_name, "type": type_id}
 
         if not is_public_channel:
@@ -359,7 +359,7 @@ class TextChannel(Channel):
         if common.is_ci_cd_pipeline_environment():
             return
 
-        url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("<Channel_ID>", str(self.id))
+        url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("$channelID", str(self.id))
         asyncio.ensure_future(self.http_session.post(url, data={"content": message}))
 
     async def delete(self) -> None:
