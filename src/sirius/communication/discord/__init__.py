@@ -203,6 +203,7 @@ class Server(DataClass):
                                                  f"Number of channels: {len(text_channel_list)}\n")
 
     async def get_user(self, username: str) -> "User":
+        username = username.lower()
         self.user_list = await User.get_all(self) if len(self.user_list) == 0 else self.user_list
 
         try:
