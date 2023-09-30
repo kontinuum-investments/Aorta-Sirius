@@ -1,8 +1,8 @@
 import base64
-import base64
 import datetime
 from typing import Any, Dict
 from urllib.parse import urlencode
+from fastapi import Request
 
 import jwt
 from aiocache import cached
@@ -73,6 +73,21 @@ class MicrosoftIdentity(BaseModel):
             n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
             e=int.from_bytes(base64.urlsafe_b64decode(jwk["e"].encode("utf-8") + b"=="), "big")
         ).public_key(default_backend())
+
+    @staticmethod
+    async def get_identity_from_request(request: Request, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
+        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+
+        if request.headers.get("authorization") is None or "Bearer " not in request.headers.get("authorization"):
+            raise InvalidAccessTokenException("Invalid Token in Header")
+
+        access_token = request.headers.get("authorization").replace("Bearer ", "")
+        microsoft_identity: MicrosoftIdentity = await MicrosoftIdentity.get_identity_from_access_token(access_token, entra_id_client_id, entra_id_tenant_id)
+        microsoft_identity.ip_address = request.client.host
+        microsoft_identity.port_number = request.client.port
+
+        return microsoft_identity
 
     @classmethod
     async def get_identity_from_access_token(cls, access_token: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
