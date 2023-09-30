@@ -1,24 +1,19 @@
-import asyncio
+import base64
 import base64
 import datetime
-import json
-from typing import Any, Dict, List
+from typing import Any, Dict
+from urllib.parse import urlencode
 
 import jwt
-from aiocache import Cache, cached
+from aiocache import cached
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPublicKey
-from msal import PublicClientApplication
 from pydantic import BaseModel
 
 from sirius import common
-from sirius.communication.discord import TextChannel
 from sirius.constants import EnvironmentVariable
-from sirius.exceptions import ApplicationException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
-from sirius.iam import constants
-from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException, AccessTokenRetrievalException
-from urllib.parse import urlencode
+from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException
 
 
 class AuthenticationFlow(BaseModel):
@@ -136,10 +131,7 @@ class MicrosoftIdentity(BaseModel):
         return f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?{urlencode(params)}"
 
     @staticmethod
-    async def get_access_token(code: str,
-                               redirect_url: str,
-                               entra_id_tenant_id: str | None = None,
-                               entra_id_client_id: str | None = None, ) -> str:
+    async def get_access_token(code: str, redirect_url: str, entra_id_tenant_id: str | None = None, entra_id_client_id: str | None = None) -> str:
         entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
         entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/token"
