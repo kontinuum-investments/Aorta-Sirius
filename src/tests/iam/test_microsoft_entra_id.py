@@ -22,7 +22,7 @@ async def test_get_login_url() -> None:
 @pytest.mark.skip(reason="Requires Interaction")
 @pytest.mark.asyncio
 async def test_get_access_token() -> None:
-    await MicrosoftIdentity.get_access_token("http://localhost/")
+    await MicrosoftIdentity.get_access_token_remotely("http://localhost/")
 
 
 @pytest.mark.skip(reason="Requires Interaction")

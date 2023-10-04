@@ -140,7 +140,6 @@ class MicrosoftIdentity(BaseModel):
         entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
         entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         scope = "User.Read" if scope is None else scope
-        authentication_id_hash = hashlib.sha256(authentication_id.encode()).hexdigest()
 
         params: Dict[str, str] = {"client_id": entra_id_client_id,
                                   "response_type": "code",
@@ -171,7 +170,7 @@ class MicrosoftIdentity(BaseModel):
             raise ClientSideException(response.data["error_description"])
 
     @staticmethod
-    async def get_access_token(redirect_url: str, discord_text_channel_name: str | None = None) -> str:
+    async def get_access_token_remotely(redirect_url: str, discord_text_channel_name: str | None = None) -> str:
         authentication_id: str = common.get_unique_id()
         discord_text_channel_name = AortaTextChannels.NOTIFICATION.value if discord_text_channel_name is None else discord_text_channel_name
 
