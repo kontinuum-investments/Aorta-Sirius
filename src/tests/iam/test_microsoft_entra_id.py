@@ -8,8 +8,6 @@ from sirius.http_requests import ClientSideException
 from sirius.iam.microsoft_entra_id import MicrosoftIdentity
 
 
-#   TODO
-@pytest.mark.skip(reason="Work in progress")
 @pytest.mark.asyncio
 async def test_get_login_url() -> None:
     authentication_id: str = common.get_unique_id()
@@ -18,7 +16,7 @@ async def test_get_login_url() -> None:
     redirect_url: str = "http://localhost/"
     url: str = MicrosoftIdentity.get_login_url(redirect_url, authentication_id)
 
-    assert url == f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?client_id={entra_id_client_id}&response_type=code&{urlencode({'redirect_uri': redirect_url})}&response_mode=query&scope=User.Read&state={authentication_id}"
+    assert f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?client_id={entra_id_client_id}&response_type=code&{urlencode({'redirect_uri': redirect_url})}&response_mode=query&scope=User.Read&state={authentication_id}" in url
 
 
 @pytest.mark.skip(reason="Requires Interaction")

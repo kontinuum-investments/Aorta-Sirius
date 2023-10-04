@@ -141,7 +141,6 @@ class MicrosoftIdentity(BaseModel):
         entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         scope = "User.Read" if scope is None else scope
         authentication_id_hash = hashlib.sha256(authentication_id.encode()).hexdigest()
-        code_challenge: str = base64.b64encode(authentication_id_hash.encode()).decode()
 
         params: Dict[str, str] = {"client_id": entra_id_client_id,
                                   "response_type": "code",
@@ -150,7 +149,7 @@ class MicrosoftIdentity(BaseModel):
                                   "scope": scope,
                                   "state": authentication_id,
                                   "code_challenge_method": "S256",
-                                  "code_challenge": base64.urlsafe_b64encode(hashlib.sha256().digest()).decode("utf-8").replace("=", "")}
+                                  "code_challenge": base64.urlsafe_b64encode(hashlib.sha256(authentication_id.encode('utf-8')).digest()).decode('utf-8').replace("=", "")}
 
         return f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?{urlencode(params)}"
 
