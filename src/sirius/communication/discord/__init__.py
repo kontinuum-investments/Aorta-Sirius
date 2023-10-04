@@ -267,7 +267,7 @@ class Server(DataClass):
 class User(DataClass):
     id: int
     username: str
-    name: str
+    name: str | None
     is_bot: bool
     server: Server
 
