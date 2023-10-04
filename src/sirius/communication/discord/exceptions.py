@@ -15,3 +15,11 @@ class ServerNotFoundException(DiscordException):
 
 class DuplicateServersFoundException(DiscordException):
     pass
+
+
+class UserNotFoundException(DiscordException):
+    pass
+
+
+class RoleNotFoundException(DiscordException):
+    pass

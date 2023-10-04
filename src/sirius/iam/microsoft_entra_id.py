@@ -1,23 +1,24 @@
 import asyncio
 import base64
 import datetime
-import json
-from typing import Any, Dict, List
+import hashlib
+import time
+from typing import Any, Dict
+from urllib.parse import urlencode
 
 import jwt
-from aiocache import Cache, cached
+from aiocache import cached
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPublicKey
-from msal import PublicClientApplication
+from fastapi import Request
 from pydantic import BaseModel
 
 from sirius import common
-from sirius.communication.discord import TextChannel
+from sirius.communication.discord import AortaTextChannels, DiscordDefaults
 from sirius.constants import EnvironmentVariable
-from sirius.exceptions import ApplicationException
-from sirius.http_requests import AsyncHTTPSession, HTTPResponse
+from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
 from sirius.iam import constants
-from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException, AccessTokenRetrievalException
+from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException
 
 
 class AuthenticationFlow(BaseModel):
@@ -28,21 +29,23 @@ class AuthenticationFlow(BaseModel):
     expiry_timestamp: datetime.datetime
 
 
-class MicrosoftIdentityToken(BaseModel):
-    access_token: str
-    refresh_token: str
-    id_token: str
-    client_info: str
-    name: str
-    username: str
-    entra_id_tenant_id: str
-    application_id: str
-    authenticated_timestamp: datetime.datetime
-    inception_timestamp: datetime.datetime
-    expiry_timestamp: datetime.datetime
-    user_id: str
-    subject_id: str
-    scope: str | None = None
+class MicrosoftEntraIDAuthenticationIDStore:
+    store: Dict[str, Any] = {}
+
+    @classmethod
+    def add(cls, authentication_id: str, authentication_code: str) -> None:
+        cls.store[authentication_id] = authentication_code
+
+    @classmethod
+    async def get_or_wait(cls, authentication_id: str) -> str:
+        time_out_timestamp: int = int(time.time()) + constants.ACQUIRE_ACCESS_TOKEN__POLLING_TIMEOUT_SECONDS
+        while int(time.time()) < time_out_timestamp:
+            if authentication_id in cls.store:
+                return cls.store.pop(authentication_id)
+
+            await asyncio.sleep(constants.ACQUIRE_ACCESS_TOKEN__POLLING_SLEEP_SECONDS)
+
+        raise AccessTokenRetrievalTimeoutException(f"Unauthenticated authentication: {authentication_id}")
 
 
 class MicrosoftIdentity(BaseModel):
@@ -56,79 +59,6 @@ class MicrosoftIdentity(BaseModel):
     user_id: str
     ip_address: str | None = None
     port_number: int | None = None
-
-    @staticmethod
-    def _get_flow(public_client_application: PublicClientApplication, scopes: List[str]) -> tuple[dict[str, Any], AuthenticationFlow]:
-        flow: Dict[str, Any] = public_client_application.initiate_device_flow(scopes=scopes)
-        if "user_code" not in flow:
-            raise ApplicationException("Fail to create device flow. Err: %s" % json.dumps(flow, indent=4))
-
-        return flow, AuthenticationFlow(
-            user_code=flow["user_code"],
-            device_code=flow["device_code"],
-            verification_uri=flow["verification_uri"],
-            message=flow["message"],
-            expiry_timestamp=datetime.datetime.utcfromtimestamp(flow["expires_at"]),
-        )
-
-    @staticmethod
-    async def _get_access_token_by_device_flow(public_client_application: PublicClientApplication, flow: Dict[str, Any], time_out_seconds: int = None) -> Dict[str, Any]:
-        def is_token_acquired(itd: Dict[str, Any]) -> bool:
-            return "access_token" in itd.keys()
-
-        def is_error(itd: Dict[str, Any]) -> bool:
-            return "error" in itd.keys()
-
-        time_out_seconds = constants.ACQUIRE_ACCESS_TOKEN__POLLING_TIMEOUT_SECONDS if time_out_seconds is None else time_out_seconds
-        number_of_seconds_waiting: int = 0
-
-        identity_token_dict: Dict[str, Any] = public_client_application.acquire_token_by_device_flow(flow)
-        while not is_token_acquired(identity_token_dict) and number_of_seconds_waiting <= time_out_seconds:
-            await asyncio.sleep(constants.ACQUIRE_ACCESS_TOKEN__POLLING_SLEEP_SECONDS)
-            identity_token_dict = public_client_application.acquire_token_by_device_flow(flow)
-            number_of_seconds_waiting = number_of_seconds_waiting + 1
-
-        if is_token_acquired(identity_token_dict):
-            return identity_token_dict
-        elif is_error(identity_token_dict):
-            raise AccessTokenRetrievalException(f"Error retrieving access token: {identity_token_dict['error_description']}")
-        else:
-            raise AccessTokenRetrievalTimeoutException("Access token retrieval timed-out")
-
-    @staticmethod
-    async def get_token(scopes: List[str], notification_text_channel: TextChannel, application_name: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentityToken":
-        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
-        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-        public_client_application: PublicClientApplication = PublicClientApplication(entra_id_client_id, authority=f"https://login.microsoftonline.com/{entra_id_tenant_id}")
-
-        flow: Dict[str, Any]
-        authentication_flow: AuthenticationFlow
-        flow, authentication_flow = MicrosoftIdentity._get_flow(public_client_application, scopes)
-        flow["expires_at"] = 0  # Makes the token acquiring process non-blocking, allowing for custom polling
-
-        await notification_text_channel.send_message(f"**Authentication Request**:\n"
-                                                     f"Application Name: *{application_name}*\n"
-                                                     f"User Code: *{authentication_flow.user_code}*\n"
-                                                     f"Verification URI: *{authentication_flow.verification_uri}*\n"
-                                                     f"Message: *{authentication_flow.message}*\n")
-
-        identity_token_dict: Dict[str, Any] = await MicrosoftIdentity._get_access_token_by_device_flow(public_client_application, flow)
-        return MicrosoftIdentityToken(
-            scope=identity_token_dict["scope"],
-            access_token=identity_token_dict["access_token"],
-            refresh_token=identity_token_dict["refresh_token"],
-            id_token=identity_token_dict["id_token"],
-            client_info=identity_token_dict["client_info"],
-            name=identity_token_dict["id_token_claims"]["name"],
-            username=identity_token_dict["id_token_claims"]["preferred_username"],
-            entra_id_tenant_id=identity_token_dict["id_token_claims"]["tid"],
-            application_id=identity_token_dict["id_token_claims"]["aud"],
-            authenticated_timestamp=datetime.datetime.utcfromtimestamp(identity_token_dict["id_token_claims"]["iat"]),
-            inception_timestamp=datetime.datetime.utcfromtimestamp(identity_token_dict["id_token_claims"]["nbf"]),
-            expiry_timestamp=datetime.datetime.utcfromtimestamp(identity_token_dict["id_token_claims"]["exp"]),
-            user_id=identity_token_dict["id_token_claims"]["oid"],
-            subject_id=identity_token_dict["id_token_claims"]["sub"],
-        )
 
     @staticmethod
     @cached(ttl=86_400)
@@ -151,6 +81,21 @@ class MicrosoftIdentity(BaseModel):
             e=int.from_bytes(base64.urlsafe_b64decode(jwk["e"].encode("utf-8") + b"=="), "big")
         ).public_key(default_backend())
 
+    @staticmethod
+    async def get_identity_from_request(request: Request, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
+        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+
+        if request.headers.get("authorization") is None or "Bearer " not in request.headers.get("authorization"):
+            raise InvalidAccessTokenException("Invalid Token in Header")
+
+        access_token = request.headers.get("authorization").replace("Bearer ", "")
+        microsoft_identity: MicrosoftIdentity = await MicrosoftIdentity.get_identity_from_access_token(access_token, entra_id_client_id, entra_id_tenant_id)
+        microsoft_identity.ip_address = request.client.host
+        microsoft_identity.port_number = request.client.port
+
+        return microsoft_identity
+
     @classmethod
     async def get_identity_from_access_token(cls, access_token: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
         if common.is_development_environment():
@@ -171,6 +116,7 @@ class MicrosoftIdentity(BaseModel):
             entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
             public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, entra_id_tenant_id)
             payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=True, audience=[entra_id_client_id], algorithms=["RS256"])
+
             return MicrosoftIdentity(
                 audience_id=payload["aud"],
                 authenticated_timestamp=datetime.datetime.utcfromtimestamp(payload["iat"]),
@@ -182,7 +128,54 @@ class MicrosoftIdentity(BaseModel):
                 user_id=payload["unique_name"]
             )
 
-        except AccessTokenRetrievalTimeoutException as e:
-            raise e
         except Exception:
             raise InvalidAccessTokenException("Invalid token supplied")
+
+    @staticmethod
+    def get_login_url(redirect_url: str,
+                      authentication_id: str,
+                      entra_id_tenant_id: str | None = None,
+                      entra_id_client_id: str | None = None,
+                      scope: str | None = None) -> str:
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        scope = "User.Read" if scope is None else scope
+
+        params: Dict[str, str] = {"client_id": entra_id_client_id,
+                                  "response_type": "code",
+                                  "redirect_uri": redirect_url,
+                                  "response_mode": "query",
+                                  "scope": scope,
+                                  "state": authentication_id,
+                                  "code_challenge_method": "S256",
+                                  "code_challenge": base64.urlsafe_b64encode(hashlib.sha256(authentication_id.encode('utf-8')).digest()).decode('utf-8').replace("=", "")}
+
+        return f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?{urlencode(params)}"
+
+    @staticmethod
+    async def _get_access_token_from_authentication_code(authentication_code: str, authentication_id: str, redirect_url: str, entra_id_tenant_id: str | None = None, entra_id_client_id: str | None = None) -> str:
+        entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+        entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/token"
+
+        try:
+            response: HTTPResponse = await AsyncHTTPSession(url).post(url, data={"client_id": entra_id_client_id,
+                                                                                 "redirect_uri": redirect_url,
+                                                                                 "code": authentication_code,
+                                                                                 "grant_type": "authorization_code",
+                                                                                 "code_verifier": authentication_id}, is_form_url_encoded=True)
+            return response.data["access_token"]
+        except ClientSideException as e:
+            response = e.data["http_response"]
+            raise ClientSideException(response.data["error_description"])
+
+    @staticmethod
+    async def get_access_token_remotely(redirect_url: str, discord_text_channel_name: str | None = None) -> str:
+        authentication_id: str = common.get_unique_id()
+        discord_text_channel_name = AortaTextChannels.NOTIFICATION.value if discord_text_channel_name is None else discord_text_channel_name
+
+        await DiscordDefaults.send_message(discord_text_channel_name, "**Authentication Request**\n"
+                                                                      f"*Sign-in here*: {MicrosoftIdentity.get_login_url(redirect_url, authentication_id)}")
+
+        authentication_code: str = await MicrosoftEntraIDAuthenticationIDStore.get_or_wait(authentication_id)
+        return await MicrosoftIdentity._get_access_token_from_authentication_code(authentication_code, authentication_id, redirect_url)

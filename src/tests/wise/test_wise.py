@@ -162,7 +162,9 @@ async def test_open_and_close_cash_account() -> None:
 @pytest.mark.asyncio
 async def test_close_account_with_non_zero_balance() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
-    cash_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.EUR, True)
+    cash_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD, True)
+    await cash_account._set_balance(Decimal("1"))
+
     with pytest.raises(OperationNotSupportedException):
         cash_account.close()
 
@@ -180,9 +182,9 @@ async def test_open_and_close_reserve_account() -> None:
 async def test_intra_cash_account_transfer() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
     usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
-    gbp_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.GBP)
+    nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
     usd_account._set_minimum_balance(Decimal("1"))
-    transfer: Transfer = await usd_account.transfer(gbp_account, Decimal("1"))
+    transfer: Transfer = await usd_account.transfer(nzd_account, Decimal("1"))
     assert transfer.id is not None
 
 
@@ -201,7 +203,7 @@ async def test_cash_to_same_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
     usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
     recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
-    usd_account._set_minimum_balance(Decimal("1"))
+    usd_account._set_minimum_balance(Decimal("5"))
     transfer: Transfer = await usd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
 
@@ -258,7 +260,6 @@ async def test_get_debit_card() -> None:
     assert wise_account.personal_profile.debit_card_list[0].token is not None
 
 
-@pytest.mark.skip(reason="Wise responds with a 500 HTTP error for some reason")
 @pytest.mark.asyncio
 async def test_get_transactions() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)

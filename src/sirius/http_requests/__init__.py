@@ -31,7 +31,7 @@ class HTTPResponse:
         self.headers = response.headers
         self.cookies = response.cookies
 
-        if self.is_successful and self.response_text is not None and self.response_text != "":
+        if self.response_text is not None and self.response_text != "":
             self.data = self.response.json()
 
         super().__init__(*args, **kwargs)
@@ -50,9 +50,9 @@ class HTTPSession:
                              f"Response Text: {http_response.response_text}"
 
         if 400 <= http_response.response_code < 500:
-            raise ClientSideException(error_message)
+            raise ClientSideException(error_message, data={"http_response": http_response})
         else:
-            raise ServerSideException(error_message)
+            raise ServerSideException(error_message, data={"http_response": http_response})
 
 
 class AsyncHTTPSession(HTTPSession):
@@ -99,22 +99,24 @@ class AsyncHTTPSession(HTTPSession):
         return http_response
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "POST")
-    async def post(self, url: str, data: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None) -> HTTPResponse:
+    async def post(self, url: str, data: Dict[str, Any] | None = None, headers: Dict[str, Any] | None = None, is_form_url_encoded: bool = False) -> HTTPResponse:
         data_string: str | None = None
         if data is not None:
             data_string = json.dumps(data)
 
             if headers is None:
                 headers = {}
-            headers["content-type"] = "application/json"
 
-        http_response: HTTPResponse = HTTPResponse(await self.client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
+            if "content-type" not in headers and not is_form_url_encoded:
+                headers["content-type"] = "application/json"
+
+        http_response: HTTPResponse = HTTPResponse(await self.client.post(url, data=data, headers=headers)) if is_form_url_encoded else HTTPResponse(await self.client.post(url, data=data_string, headers=headers))  # type: ignore[arg-type]
         if not http_response.is_successful:
             AsyncHTTPSession.raise_http_exception(http_response)
 
         return http_response
 
-    @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
+    # @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "DELETE")
     async def delete(self, url: str, headers: Dict[str, Any] | None = None) -> HTTPResponse:
         http_response: HTTPResponse = HTTPResponse(await self.client.delete(url, headers=headers))
         if not http_response.is_successful:

@@ -2,7 +2,9 @@ import asyncio
 import datetime
 import inspect
 import os
+import secrets
 import socket
+import string
 import tempfile
 import threading
 from enum import Enum
@@ -183,3 +185,8 @@ def download_file_from_url(url: str) -> str:
     temp_file_path: str = get_new_temp_file_path()
     open(temp_file_path, "wb").write(requests.get(url).content)
     return temp_file_path
+
+
+def get_unique_id(length: int = 16) -> str:
+    raw_id: str = "".join(secrets.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(length))
+    return "-".join([raw_id[i:i+4] for i in range(0, len(raw_id), 4)])

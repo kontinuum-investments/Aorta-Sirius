@@ -10,6 +10,7 @@ The Global Python SDK for the Central Finite Curve
 
 - `APPLICATION_NAME` _(Used as the default Discord Server Name)_
 - `DISCORD_BOT_TOKEN`
+- `DISCORD_SERVER_OWNER_USERNAME`
 - `SENTRY_URL`
 - `WISE_PRIMARY_ACCOUNT_API_KEY`
 - `WISE_SECONDARY_ACCOUNT_API_KEY`
