@@ -228,9 +228,6 @@ class Server(DataClass):
                                         f"Server Name: {self.name}\n"
                                         f"Username: {username}")
 
-    async def get_server_owner(self) -> "User":
-        return await self.get_user(common.get_environmental_variable(EnvironmentVariable.DISCORD_SERVER_OWNER_USERNAME))
-
     async def get_role(self, role_type: RoleType) -> "Role":
         if role_type == RoleType.OTHER:
             raise OperationNotSupportedException("OTHER Role Type searches are not allowed")
@@ -347,11 +344,6 @@ class Channel(DataClass):
 
         if not is_public_channel:
             data["permission_overwrites"] = [{
-                "id": str((await server.get_server_owner()).id),
-                "type": 1,
-                "allow": 1024,
-                "deny": 0
-            }, {
                 "id": str((await server.get_role(RoleType.EVERYONE)).id),
                 "type": 0,
                 "allow": 0,
