@@ -52,7 +52,6 @@ jobs:
           APPLICATION_NAME: ${{ vars.APPLICATION_NAME }}
           ENVIRONMENT: ${{ vars.ENVIRONMENT }}
           MONGO_DB_CONNECTION_STRING: ${{ secrets.MONGO_DB_CONNECTION_STRING }}
-          DISCORD_SERVER_OWNER_USERNAME: ${{ vars.DISCORD_SERVER_OWNER_USERNAME }}
           ENTRA_ID_TENANT_ID: ${{ secrets.ENTRA_ID_TENANT_ID }}
           ENTRA_ID_CLIENT_ID: ${{ secrets.ENTRA_ID_CLIENT_ID }}
         run: pytest --cov sirius src/tests --cov-report xml
