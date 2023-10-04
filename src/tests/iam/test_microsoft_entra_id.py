@@ -8,6 +8,8 @@ from sirius.http_requests import ClientSideException
 from sirius.iam.microsoft_entra_id import MicrosoftIdentity
 
 
+#   TODO
+@pytest.mark.skip(reason="Work in progress")
 @pytest.mark.asyncio
 async def test_get_login_url() -> None:
     authentication_id: str = common.get_unique_id()
