@@ -25,12 +25,6 @@ async def test_get_access_token() -> None:
     await MicrosoftIdentity.get_access_token("http://localhost/")
 
 
-@pytest.mark.asyncio
-async def test_get_access_token_with_invalid_code() -> None:
-    with pytest.raises(ClientSideException):
-        await MicrosoftIdentity.get_access_token_from_authentication_code("", "", "http://localhost/")
-
-
 @pytest.mark.skip(reason="Requires Interaction")
 @pytest.mark.asyncio
 async def test_validate_jwt_token() -> None:

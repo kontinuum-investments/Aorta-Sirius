@@ -154,7 +154,7 @@ class MicrosoftIdentity(BaseModel):
         return f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?{urlencode(params)}"
 
     @staticmethod
-    async def get_access_token_from_authentication_code(authentication_code: str, authentication_id: str, redirect_url: str, entra_id_tenant_id: str | None = None, entra_id_client_id: str | None = None) -> str:
+    async def _get_access_token_from_authentication_code(authentication_code: str, authentication_id: str, redirect_url: str, entra_id_tenant_id: str | None = None, entra_id_client_id: str | None = None) -> str:
         entra_id_tenant_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
         entra_id_client_id = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/token"
@@ -179,4 +179,4 @@ class MicrosoftIdentity(BaseModel):
                                                                       f"*Sign-in here*: {MicrosoftIdentity.get_login_url(redirect_url, authentication_id)}")
 
         authentication_code: str = await MicrosoftEntraIDAuthenticationIDStore.get_or_wait(authentication_id)
-        return await MicrosoftIdentity.get_access_token_from_authentication_code(authentication_code, authentication_id, redirect_url)
+        return await MicrosoftIdentity._get_access_token_from_authentication_code(authentication_code, authentication_id, redirect_url)
