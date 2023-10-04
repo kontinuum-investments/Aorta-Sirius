@@ -4,7 +4,7 @@ import time
 from enum import Enum
 from http import HTTPStatus
 from logging import Logger
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 
 from pydantic import PrivateAttr
 
@@ -17,6 +17,7 @@ from sirius.exceptions import OperationNotSupportedException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
 
 logger: Logger = application_performance_monitoring.get_logger()
+default_bot: Union["Bot", None] = None
 
 
 class ServerName(Enum):
@@ -28,7 +29,6 @@ class ServerName(Enum):
 class AortaTextChannels(Enum):
     DEBUG: str = "logs"
     NOTIFICATION: str = "notification"
-    BETELGEUSE: str = "betelgeuse"
     WISE: str = "wise"
 
 
@@ -90,6 +90,21 @@ class DiscordHTTPSession(AsyncHTTPSession):
 
 
 DiscordHTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
+
+
+class DiscordDefaults(DataClass):
+
+    @staticmethod
+    async def send_message(text_channel_name: str, message: str) -> None:
+        global default_bot
+        default_bot = await Bot.get() if default_bot is None else default_bot
+        server: Server = await default_bot.get_server()
+        text_channel: TextChannel = await server.get_text_channel(text_channel_name)
+        await text_channel.send_message(message)
+
+    @classmethod
+    async def notify(cls, message: str) -> None:
+        await DiscordDefaults.send_message(AortaTextChannels.NOTIFICATION.value, message)
 
 
 class Bot(DataClass):
@@ -384,12 +399,6 @@ class TextChannel(Channel):
         text_channel: TextChannel = TextChannel.model_construct(**channel.model_dump(exclude={"server"}))
         text_channel.server = server
         return text_channel
-
-    @staticmethod
-    async def get_text_channel_from_default_bot_and_server(text_channel_name: str) -> "TextChannel":
-        bot: Bot = await Bot.get()
-        server: Server = await bot.get_server()
-        return await server.get_text_channel(text_channel_name)
 
 
 class Message(DataClass):

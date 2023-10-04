@@ -9,7 +9,7 @@ from pydantic import PrivateAttr, Field
 
 from sirius import common
 from sirius.common import DataClass, Currency
-from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string
+from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string, DiscordDefaults
 from sirius.constants import EnvironmentVariable
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
 from sirius.http_requests import SyncHTTPSession, HTTPResponse
@@ -36,26 +36,6 @@ class WebhookAccountUpdateType(Enum):
     CREDIT: str = "balances#credit"
     UPDATE: str = "balances#update"
     STATE_CHANGE: str = "balances#account-state-change"
-
-
-class WiseDiscord:
-    bot: Bot | None = None
-    server: Server | None = None
-    wise_channel: TextChannel | None = None
-
-    @classmethod
-    async def get_notification_channel(cls) -> TextChannel:
-        if cls.wise_channel is not None:
-            return cls.wise_channel
-
-        cls.bot = await Bot.get()
-        cls.server = await cls.bot.get_server()
-        cls.wise_channel = await cls.server.get_text_channel(AortaTextChannels.WISE.value)
-        return cls.wise_channel
-
-    @classmethod
-    async def notify(cls, message: str) -> None:
-        await (await WiseDiscord.get_notification_channel()).send_message(message)
 
 
 class WiseAccount(DataClass):
@@ -123,7 +103,7 @@ class Profile(DataClass):
                 except StopIteration:
                     self.cash_account_list.remove(original_cash_account)
 
-            [self.cash_account_list.append(new_cash_account) for new_cash_account in cash_account_to_update_list]   # type: ignore[func-returns-value]
+            [self.cash_account_list.append(new_cash_account) for new_cash_account in cash_account_to_update_list]  # type: ignore[func-returns-value]
 
         if self.reserve_account_list is None:
             self.reserve_account_list = reserve_account_to_update_list
@@ -136,7 +116,7 @@ class Profile(DataClass):
                 except StopIteration:
                     self.reserve_account_list.remove(original_reserve_account)
 
-            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in reserve_account_to_update_list]   # type: ignore[func-returns-value]
+            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in reserve_account_to_update_list]  # type: ignore[func-returns-value]
 
         if self.recipient_list is None:
             self.recipient_list = recipient_to_update_list
@@ -149,7 +129,7 @@ class Profile(DataClass):
                 except StopIteration:
                     self.recipient_list.remove(original_recipient)
 
-            [self.recipient_list.append(new_recipient) for new_recipient in recipient_to_update_list]   # type: ignore[func-returns-value]
+            [self.recipient_list.append(new_recipient) for new_recipient in recipient_to_update_list]  # type: ignore[func-returns-value]
 
     def get_cash_account(self, currency: Currency, is_create_if_unavailable: bool = False) -> "CashAccount":
         try:
@@ -209,8 +189,7 @@ class Profile(DataClass):
             await reserve_account._set_balance(Decimal("0"))
             reserve_account.close()
 
-        # TODO: Change this to reset all currencies rather than just NZD
-        [await cash_account._set_balance(Decimal("0")) for cash_account in list(filter(lambda c: c.currency == Currency.NZD, self.cash_account_list))]
+        [await cash_account._set_balance(Decimal("0")) for cash_account in self.cash_account_list]
 
 
 class PersonalProfile(Profile):
@@ -346,28 +325,28 @@ class CashAccount(Account):
         transfer: Transfer = Transfer.model_construct()
         if isinstance(to_account, CashAccount):
             transfer = Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount, is_amount_in_from_currency)
-            await WiseDiscord.notify(f"**Intra-Account Transfer**:\n"
-                                     f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
-                                     f"From: *{self.currency.value}*\n"
-                                     f"To: *{to_account.currency.value}*\n"
-                                     f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n"
-                                     )
+            await DiscordDefaults.send_message(AortaTextChannels.WISE.value, f"**Intra-Account Transfer**:\n"
+                                                                             f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
+                                                                             f"From: *{self.currency.value}*\n"
+                                                                             f"To: *{to_account.currency.value}*\n"
+                                                                             f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n"
+                                               )
 
         elif isinstance(to_account, ReserveAccount):
             transfer = Transfer.cash_to_savings_account_transfer(self.profile, self, to_account, amount)
-            await WiseDiscord.notify(f"**Intra-Account Transfer**:\n"
-                                     f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
-                                     f"From: *{self.currency.value}*\n"
-                                     f"To: *{to_account.name}*\n"
-                                     f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
+            await DiscordDefaults.send_message(AortaTextChannels.WISE.value, f"**Intra-Account Transfer**:\n"
+                                                                             f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
+                                                                             f"From: *{self.currency.value}*\n"
+                                                                             f"To: *{to_account.name}*\n"
+                                                                             f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
 
         elif isinstance(to_account, Recipient):
             transfer = Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount, "" if reference is None else reference, is_amount_in_from_currency)
-            await WiseDiscord.notify(f"**Third-Party Transfer**:\n"
-                                     f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
-                                     f"From: *{self.currency.value}*\n"
-                                     f"To: *{to_account.account_holder_name}*\n"
-                                     f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
+            await DiscordDefaults.send_message(AortaTextChannels.WISE.value, f"**Third-Party Transfer**:\n"
+                                                                             f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
+                                                                             f"From: *{self.currency.value}*\n"
+                                                                             f"To: *{to_account.account_holder_name}*\n"
+                                                                             f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
 
             if not common.is_production_environment():
                 self._simulate_completed_transfer(transfer.id)
@@ -407,15 +386,13 @@ class CashAccount(Account):
         if self.balance <= amount:
             return
 
-        amount_to_deduct: Decimal = self.balance - amount
-        maximum_transfer_amount: Decimal = Decimal(7_000_000)
-        hkd_account: CashAccount = self.profile.get_cash_account(common.Currency.HKD, True)
+        maximum_transfer_amount: Decimal = Decimal(1_000_000)
+        amount_to_deduct: Decimal = min(self.balance - amount, maximum_transfer_amount)
+        recipient: Recipient = self.profile.get_recipient("GB33BUKB20201555555555")
+        await self.transfer(recipient, amount_to_deduct, is_amount_in_from_currency=True)
 
-        if amount_to_deduct > maximum_transfer_amount:
-            await self.transfer(hkd_account, maximum_transfer_amount)
+        if self.balance > amount:
             await self._set_maximum_balance(amount)
-        else:
-            await self.transfer(hkd_account, amount_to_deduct, is_amount_in_from_currency=True)
 
     @staticmethod
     def get_all(profile: Profile) -> List["CashAccount"]:
@@ -449,11 +426,11 @@ class ReserveAccount(Account):
                 "Direct inter-currency transfers from a reserve account is not supported")
 
         transfer: Transfer = Transfer.savings_to_cash_account_transfer(self.profile, self, to_account, amount)
-        await WiseDiscord.notify(f"**Intra-Account Transfer**:\n"
-                                 f"*Timestamp*: {get_timestamp_string(datetime.datetime.now())}\n"
-                                 f"*From*: {self.name}\n"
-                                 f"*To*: {to_account.currency.value}\n"
-                                 f"*Amount*: {self.currency.value} {'{:,}'.format(amount)}\n")
+        await DiscordDefaults.send_message(AortaTextChannels.WISE.value, f"**Intra-Account Transfer**:\n"
+                                                                         f"*Timestamp*: {get_timestamp_string(datetime.datetime.now())}\n"
+                                                                         f"*From*: {self.name}\n"
+                                                                         f"*To*: {to_account.currency.value}\n"
+                                                                         f"*Amount*: {self.currency.value} {'{:,}'.format(amount)}\n")
 
         self.profile.wise_account._initialize()
         return transfer
@@ -536,16 +513,15 @@ class Recipient(DataClass):
 
     @staticmethod
     def get_all(profile: Profile) -> List["Recipient"]:
-        response: HTTPResponse = profile.http_session.get(
-            constants.ENDPOINT__RECIPIENT__GET_ALL.replace("$profileId", str(profile.id)))
-        raw_recipient_list: List[Dict[str, Any]] = list(
-            filter(lambda d: d["details"]["accountNumber"] is not None, response.data))
+        response: HTTPResponse = profile.http_session.get(constants.ENDPOINT__RECIPIENT__GET_ALL.replace("$profileId", str(profile.id)))
+        raw_recipient_list: List[Dict[str, Any]] = list(filter(lambda d: d["details"]["accountNumber"] is not None or d["details"]["iban"] is not None, response.data))
+
         return [Recipient(
             id=data["id"],
             account_holder_name=data["accountHolderName"],
             currency=Currency(data["currency"]),
             is_self_owned=data["ownedByCustomer"],
-            account_number=data["details"]["accountNumber"],
+            account_number=data["details"]["accountNumber"] if data["details"]["accountNumber"] is not None else data["details"]["iban"],
         ) for data in raw_recipient_list]
 
 
