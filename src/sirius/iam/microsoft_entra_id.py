@@ -171,7 +171,7 @@ class MicrosoftIdentity(BaseModel):
             raise ClientSideException(response.data["error_description"])
 
     @staticmethod
-    async def get_access_token(redirect_url: str, discord_text_channel_name: str | None = None) -> str:
+    async def get_access_token_remotely(redirect_url: str, discord_text_channel_name: str | None = None) -> str:
         authentication_id: str = common.get_unique_id()
         discord_text_channel_name = AortaTextChannels.NOTIFICATION.value if discord_text_channel_name is None else discord_text_channel_name
 
