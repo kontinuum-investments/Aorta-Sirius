@@ -406,5 +406,5 @@ class Message(DataClass):
     content: str
 
 
-def get_timestamp_string(timestamp: datetime.datetime) -> str:
+def get_timestamp_string(timestamp: datetime.datetime | datetime.date) -> str:
     return f"<t:{str(int(time.mktime(timestamp.timetuple())))}:T>"
