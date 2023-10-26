@@ -24,7 +24,7 @@ The Global Python SDK for the Central Finite Curve
 
 ### Required Key Vault Secrets
 
-- `APPLICATION_NAME` _(Used as the default Discord Server Name)_
+- `APPLICATION-NAME` _(Used as the default Discord Server Name)_
 - `DISCORD-BOT-TOKEN`
 - `SENTRY-URL`
 - `WISE-PRIMARY-ACCOUNT-API-KEY`
