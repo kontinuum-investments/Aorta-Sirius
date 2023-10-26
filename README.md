@@ -6,34 +6,39 @@ The Global Python SDK for the Central Finite Curve
 
 # Installation
 
-## Required Environmental Variables
+## Required Environment Variables
+- `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
+- `AZURE_CLIENT_ID`
+- `AZURE_TENANT_ID`
+- `AZURE_CLIENT_SECRET` - [Documentation](https://learn.microsoft.com/en-us/azure/industry/training-services/microsoft-community-training/frequently-asked-questions/generate-new-clientsecret-link-to-key-vault)
+- `AZURE_KEY_VAULT_URL`
+
+## Azure
+
+### Key Vault
+
+1. Create a KeyVault
+2. Assign appropriate role to the App Registration
+   1. `Key Vault Secrets User` - If you only need read permissions
+   2. `Key Vault Secrets Officer` - If you need both read and write permissions
+
+### Required Key Vault Secrets
 
 - `APPLICATION_NAME` _(Used as the default Discord Server Name)_
-- `DISCORD_BOT_TOKEN`
-- `SENTRY_URL`
-- `WISE_PRIMARY_ACCOUNT_API_KEY`
-- `WISE_SECONDARY_ACCOUNT_API_KEY`
-- `MONGO_DB_CONNECTION_STRING`
-- `ENTRA_ID_CLIENT_ID`
-- `ENTRA_ID_TENANT_ID`
-- `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_WHATSAPP_NUMBER`
-- `TWILIO_SMS_NUMBER`
+- `DISCORD-BOT-TOKEN`
+- `SENTRY-URL`
+- `WISE-PRIMARY-ACCOUNT-API-KEY`
+- `WISE-SECONDARY-ACCOUNT-API-KEY`
+- `MONGO-DB-CONNECTION-STRING`
+- `ENTRA-ID-CLIENT-ID`
+- `ENTRA-ID-TENANT-ID`
+- `TWILIO-AUTH-TOKEN`
+- `TWILIO-ACCOUNT-SID`
+- `TWILIO-WHATSAPP-NUMBER`
+- `TWILIO-SMS-NUMBER`
 
 ## CI/CD Pipeline
 ## Required Repository Secrets
 - `CODECOV_TOKEN`
 - `PYPI_ACCESS_TOKEN`
 - `QODANA_TOKEN`
-- `DISCORD_BOT_TOKEN`
-
-## Required Organizational Variables
-- `APPLICATION_NAME` _(Used as the default Discord Server Name)_
-- `ENVIRONMENT` - Determines which environment it is currently in; either `Production`, `Test`, `Development` or `CI/CD Pipeline`
-
-## Required Organizational Secrets
-- `SENTRY_URL`
-- `WISE_PRIMARY_ACCOUNT_API_KEY`
-- `WISE_SECONDARY_ACCOUNT_API_KEY`

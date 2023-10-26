@@ -10,7 +10,7 @@ from pydantic import PrivateAttr, Field
 from sirius import common
 from sirius.common import DataClass, Currency
 from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string, DiscordDefaults
-from sirius.constants import EnvironmentVariable
+from sirius.constants import EnvironmentSecret
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
 from sirius.http_requests import SyncHTTPSession, HTTPResponse
 from sirius.wise import constants
@@ -62,9 +62,9 @@ class WiseAccount(DataClass):
 
     @staticmethod
     def get(wise_account_type: WiseAccountType) -> "WiseAccount":
-        environmental_variable: EnvironmentVariable = EnvironmentVariable.WISE_PRIMARY_ACCOUNT_API_KEY if wise_account_type == WiseAccountType.PRIMARY else EnvironmentVariable.WISE_SECONDARY_ACCOUNT_API_KEY
+        environmental_variable: EnvironmentSecret = EnvironmentSecret.WISE_PRIMARY_ACCOUNT_API_KEY if wise_account_type == WiseAccountType.PRIMARY else EnvironmentSecret.WISE_SECONDARY_ACCOUNT_API_KEY
         http_session: SyncHTTPSession = SyncHTTPSession(constants.URL, {
-            "Authorization": f"Bearer {common.get_environmental_variable(environmental_variable)}"})
+            "Authorization": f"Bearer {common.get_environmental_secret(environmental_variable)}"})
 
         wise_account: WiseAccount = WiseAccount.model_construct(type=wise_account_type, personal_profile=None, business_profile=None)
         wise_account._http_session = http_session

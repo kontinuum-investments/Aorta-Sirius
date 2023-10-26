@@ -12,7 +12,7 @@ from sirius import application_performance_monitoring, common
 from sirius.common import DataClass
 from sirius.communication.discord import constants
 from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException, RoleNotFoundException
-from sirius.constants import EnvironmentVariable
+from sirius.constants import EnvironmentSecret
 from sirius.exceptions import OperationNotSupportedException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
 
@@ -89,7 +89,8 @@ class DiscordHTTPSession(AsyncHTTPSession):
             raise e
 
 
-DiscordHTTPSession(constants.URL, {"Authorization": f"Bot {common.get_environmental_variable(EnvironmentVariable.DISCORD_BOT_TOKEN)}"})
+DiscordHTTPSession(constants.URL,
+                   {"Authorization": f"Bot {common.get_environmental_secret(EnvironmentSecret.DISCORD_BOT_TOKEN)}"})
 
 
 class DiscordDefaults(DataClass):

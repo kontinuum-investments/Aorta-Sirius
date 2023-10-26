@@ -7,12 +7,12 @@ from sentry_sdk.integrations.logging import LoggingIntegration
 
 from sirius import common
 from sirius.application_performance_monitoring.constants import Operation
-from sirius.constants import EnvironmentVariable
+from sirius.constants import EnvironmentSecret
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s || %(levelname)s || %(module)s.%(funcName)s\n%(message)s\n")
 
 sentry_sdk.init(
-    dsn=common.get_environmental_variable(EnvironmentVariable.SENTRY_URL),
+    dsn=common.get_environmental_secret(EnvironmentSecret.SENTRY_URL),
     traces_sample_rate=1.0,
     profiles_sample_rate=1.0,
     environment=common.get_environment().value,

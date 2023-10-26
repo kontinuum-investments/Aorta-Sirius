@@ -15,7 +15,7 @@ import requests
 from _decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
-from sirius.constants import EnvironmentVariable
+from sirius.constants import EnvironmentVariable, EnvironmentSecret
 from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
 
 
@@ -84,11 +84,16 @@ def get_environmental_variable(environmental_variable: EnvironmentVariable | str
     environmental_variable_key: str = environmental_variable.value if isinstance(environmental_variable, EnvironmentVariable) else environmental_variable
     value: str | None = os.getenv(environmental_variable_key)
     if value is None:
-        raise ApplicationException(
-            f"Environment variable with the key is not available: {environmental_variable_key}")
+        raise ApplicationException(f"Environment variable with the key is not available: {environmental_variable_key}")
 
     return value
 
+
+def get_environmental_secret(environmental_secret: EnvironmentSecret | str) -> str:
+    from sirius.azure.key_vault import AzureKeyVault
+    environmental_secret_key: str = environmental_secret.value if isinstance(environmental_secret,
+                                                                             EnvironmentSecret) else environmental_secret
+    return AzureKeyVault.get(environmental_secret_key)
 
 def get_environment() -> Environment:
     environment: str | None = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
@@ -116,7 +121,7 @@ def is_ci_cd_pipeline_environment() -> bool:
 
 
 def get_application_name() -> str:
-    return get_environmental_variable(EnvironmentVariable.APPLICATION_NAME)
+    return get_environmental_secret(EnvironmentSecret.APPLICATION_NAME)
 
 
 def threaded(func: Callable) -> Callable:

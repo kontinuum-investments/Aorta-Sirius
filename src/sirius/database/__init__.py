@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncI
 
 from sirius import common
 from sirius.common import DataClass
-from sirius.constants import EnvironmentVariable
+from sirius.constants import EnvironmentSecret
 
 client: AsyncIOMotorClient | None = None  # type: ignore[valid-type]
 db: AsyncIOMotorDatabase | None = None  # type: ignore[valid-type]
@@ -15,9 +15,10 @@ db: AsyncIOMotorDatabase | None = None  # type: ignore[valid-type]
 
 async def initialize() -> None:
     global client, db
-    client = motor.motor_asyncio.AsyncIOMotorClient(f"{common.get_environmental_variable(EnvironmentVariable.MONGO_DB_CONNECTION_STRING)}&retryWrites=false",
+    client = motor.motor_asyncio.AsyncIOMotorClient(
+        f"{common.get_environmental_secret(EnvironmentSecret.MONGO_DB_CONNECTION_STRING)}&retryWrites=false",
                                                     uuidRepresentation="standard") if client is None else client
-    db = client[common.get_environmental_variable(EnvironmentVariable.APPLICATION_NAME)] if db is None else db
+    db = client[common.get_environmental_secret(EnvironmentSecret.APPLICATION_NAME)] if db is None else db
 
 
 async def drop_collection(collection_name: str) -> None:

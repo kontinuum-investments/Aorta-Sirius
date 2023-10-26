@@ -3,7 +3,7 @@ from urllib.parse import urlencode
 import pytest
 
 from sirius import common
-from sirius.constants import EnvironmentVariable
+from sirius.constants import EnvironmentSecret
 from sirius.http_requests import ClientSideException
 from sirius.iam.microsoft_entra_id import MicrosoftIdentity
 
@@ -11,8 +11,8 @@ from sirius.iam.microsoft_entra_id import MicrosoftIdentity
 @pytest.mark.asyncio
 async def test_get_login_url() -> None:
     authentication_id: str = common.get_unique_id()
-    entra_id_tenant_id: str = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_TENANT_ID)
-    entra_id_client_id: str = common.get_environmental_variable(EnvironmentVariable.ENTRA_ID_CLIENT_ID)
+    entra_id_tenant_id: str = common.get_environmental_secret(EnvironmentSecret.ENTRA_ID_TENANT_ID)
+    entra_id_client_id: str = common.get_environmental_secret(EnvironmentSecret.ENTRA_ID_CLIENT_ID)
     redirect_url: str = "http://localhost/"
     url: str = MicrosoftIdentity.get_login_url(redirect_url, authentication_id)
 
