@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import inspect
+import multiprocessing
 import os
 import secrets
 import socket
@@ -8,12 +9,13 @@ import string
 import tempfile
 import threading
 from enum import Enum
-from typing import Callable, Any, Dict
+from typing import Callable, Any, Dict, List
 
 import pytz
 import requests
 from _decimal import Decimal
 from pydantic import BaseModel, ConfigDict
+from concurrent.futures import ProcessPoolExecutor
 
 from sirius.constants import EnvironmentVariable, EnvironmentSecret
 from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
@@ -195,3 +197,12 @@ def download_file_from_url(url: str) -> str:
 def get_unique_id(length: int = 16) -> str:
     raw_id: str = "".join(secrets.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(length))
     return "-".join([raw_id[i:i+4] for i in range(0, len(raw_id), 4)])
+
+
+def run_function_using_multiple_processes(func: Callable, argument_list: List[Any],
+                                          maximum_number_of_threads: int | None = None) -> List[Any | None]:
+    maximum_number_of_threads = multiprocessing.cpu_count() + 1 if maximum_number_of_threads is None else maximum_number_of_threads
+    maximum_number_of_threads = min(maximum_number_of_threads, len(argument_list))
+
+    with ProcessPoolExecutor(max_workers=maximum_number_of_threads) as executor:
+        return list(executor.map(func, argument_list))
