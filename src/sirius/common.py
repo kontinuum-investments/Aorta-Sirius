@@ -1,6 +1,8 @@
 import asyncio
+import base64
 import datetime
 import inspect
+import io
 import multiprocessing
 import os
 import secrets
@@ -12,10 +14,13 @@ from enum import Enum
 from typing import Callable, Any, Dict, List
 
 import pytz
+import qrcode
 import requests
 from _decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 from concurrent.futures import ProcessPoolExecutor
+
+from qrcode.image.pil import PilImage
 
 from sirius.constants import EnvironmentVariable, EnvironmentSecret
 from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
@@ -83,7 +88,8 @@ class DataClass(BaseModel):
 
 
 def get_environmental_variable(environmental_variable: EnvironmentVariable | str) -> str:
-    environmental_variable_key: str = environmental_variable.value if isinstance(environmental_variable, EnvironmentVariable) else environmental_variable
+    environmental_variable_key: str = environmental_variable.value if isinstance(environmental_variable,
+                                                                                 EnvironmentVariable) else environmental_variable
     value: str | None = os.getenv(environmental_variable_key)
     if value is None:
         raise ApplicationException(f"Environment variable with the key is not available: {environmental_variable_key}")
@@ -96,6 +102,7 @@ def get_environmental_secret(environmental_secret: EnvironmentSecret | str) -> s
     environmental_secret_key: str = environmental_secret.value if isinstance(environmental_secret,
                                                                              EnvironmentSecret) else environmental_secret
     return AzureKeyVault.get(environmental_secret_key)
+
 
 def get_environment() -> Environment:
     environment: str | None = os.getenv(EnvironmentVariable.ENVIRONMENT.value)
@@ -144,7 +151,7 @@ def wait_for_all_coroutines(func: Callable) -> Callable:
     async def wrapper(*args: Any, **kwargs: Any) -> None:
         asyncio.create_task(func(*args, **kwargs))
         await asyncio.wait(  # type: ignore[type-var]
-            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),  # type: ignore[arg-type,union-attr,attr-defined]
+            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())), # type: ignore[arg-type,union-attr,attr-defined]
             timeout=600)
         return None
 
@@ -195,8 +202,9 @@ def download_file_from_url(url: str) -> str:
 
 
 def get_unique_id(length: int = 16) -> str:
-    raw_id: str = "".join(secrets.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(length))
-    return "-".join([raw_id[i:i+4] for i in range(0, len(raw_id), 4)])
+    raw_id: str = "".join(
+        secrets.choice(string.ascii_lowercase + string.ascii_uppercase + string.digits) for _ in range(length))
+    return "-".join([raw_id[i:i + 4] for i in range(0, len(raw_id), 4)])
 
 
 def run_function_using_multiple_processes(func: Callable, argument_list: List[Any],
@@ -206,3 +214,11 @@ def run_function_using_multiple_processes(func: Callable, argument_list: List[An
 
     with ProcessPoolExecutor(max_workers=maximum_number_of_threads) as executor:
         return list(executor.map(func, argument_list))
+
+
+def get_qr_code(data_str: str) -> str:
+    buffered: io.BytesIO = io.BytesIO()
+    qr_code: PilImage = qrcode.make(data_str)
+
+    qr_code.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
