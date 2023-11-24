@@ -411,7 +411,7 @@ class CashAccount(Account):
 
         if amount_to_deduct < Decimal("10"):
             amount_to_deduct = amount_to_deduct + Decimal("10")
-            self._set_minimum_balance(amount_to_deduct)
+            self._set_minimum_balance(self.balance + Decimal("10"))
 
         await self.transfer(recipient, amount_to_deduct, is_amount_in_from_currency=True)
 
