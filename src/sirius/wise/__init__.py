@@ -12,7 +12,7 @@ from sirius.communication.discord import AortaTextChannels, get_timestamp_string
     DiscordDefaults
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
-from sirius.http_requests import SyncHTTPSession, HTTPResponse
+from sirius.http_requests import SyncHTTPSession, HTTPResponse, ServerSideException
 from sirius.wise import constants
 from sirius.wise.exceptions import CashAccountNotFoundException, ReserveAccountNotFoundException, \
     RecipientNotFoundException
@@ -328,10 +328,23 @@ class CashAccount(Account):
         get_status: Callable = lambda: self.http_session.get(f"{constants.ENDPOINT__TRANSFER__CREATE_THIRD_PARTY_TRANSFER}/{transfer_id}").data["status"]
         url: str = constants.ENDPOINT__SIMULATION__COMPLETE_TRANSFER.replace("$transferId", str(transfer_id))
 
-        transfer_status: str = get_status()
-        self.http_session.get(url.replace("$status", "processing"))
-        self.http_session.get(url.replace("$status", "funds_converted"))
-        self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
+        if get_status() == "incoming_payment_waiting":
+            try:
+                self.http_session.get(url.replace("$status", "processing"))
+            except ServerSideException:
+                pass
+
+        if get_status() == "processing":
+            try:
+                self.http_session.get(url.replace("$status", "funds_converted"))
+            except ServerSideException:
+                pass
+
+        if get_status() == "funds_converted":
+            try:
+                self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
+            except ServerSideException:
+                pass
 
     async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal,
                        reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
