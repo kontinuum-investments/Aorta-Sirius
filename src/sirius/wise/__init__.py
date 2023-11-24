@@ -12,7 +12,8 @@ from sirius.communication.discord import AortaTextChannels, get_timestamp_string
     DiscordDefaults
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
-from sirius.http_requests import SyncHTTPSession, HTTPResponse, ServerSideException
+from sirius.http_requests import SyncHTTPSession, HTTPResponse
+from sirius.http_requests.exceptions import HTTPException
 from sirius.wise import constants
 from sirius.wise.exceptions import CashAccountNotFoundException, ReserveAccountNotFoundException, \
     RecipientNotFoundException
@@ -331,19 +332,19 @@ class CashAccount(Account):
         if get_status() == "incoming_payment_waiting":
             try:
                 self.http_session.get(url.replace("$status", "processing"))
-            except ServerSideException:
+            except HTTPException:
                 pass
 
         if get_status() == "processing":
             try:
                 self.http_session.get(url.replace("$status", "funds_converted"))
-            except ServerSideException:
+            except HTTPException:
                 pass
 
         if get_status() == "funds_converted":
             try:
                 self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
-            except ServerSideException:
+            except HTTPException:
                 pass
 
     async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal,
