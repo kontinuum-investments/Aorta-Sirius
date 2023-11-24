@@ -2,7 +2,7 @@ import datetime
 import uuid
 from _decimal import Decimal, ROUND_HALF_UP
 from enum import Enum, auto
-from typing import List, Dict, Any, Union, cast
+from typing import List, Dict, Any, Union, cast, Callable
 
 from pydantic import PrivateAttr, Field
 
@@ -325,7 +325,10 @@ class CashAccount(Account):
 
     @common.only_in_dev
     def _simulate_completed_transfer(self, transfer_id: int) -> None:
+        get_status: Callable = lambda: self.http_session.get(f"{constants.ENDPOINT__TRANSFER__CREATE_THIRD_PARTY_TRANSFER}/{transfer_id}").data["status"]
         url: str = constants.ENDPOINT__SIMULATION__COMPLETE_TRANSFER.replace("$transferId", str(transfer_id))
+
+        transfer_status: str = get_status()
         self.http_session.get(url.replace("$status", "processing"))
         self.http_session.get(url.replace("$status", "funds_converted"))
         self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
