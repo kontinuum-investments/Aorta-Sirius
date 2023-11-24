@@ -9,7 +9,8 @@ from pydantic import PrivateAttr, Field
 
 from sirius import common
 from sirius.common import DataClass, Currency
-from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string, DiscordDefaults
+from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string, \
+    DiscordDefaults
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
 from sirius.http_requests import SyncHTTPSession, HTTPResponse
@@ -49,13 +50,17 @@ class WiseAccount(DataClass):
         return self._http_session
 
     def _initialize(self) -> None:
-        if (self.personal_profile is None and self.business_profile is not None) or (self.personal_profile is not None and self.business_profile is None):
-            raise SDKClientException("One profile has been de-initialized; profile attributes should never be de-initialized in the code")
+        if (self.personal_profile is None and self.business_profile is not None) or (
+                self.personal_profile is not None and self.business_profile is None):
+            raise SDKClientException(
+                "One profile has been de-initialized; profile attributes should never be de-initialized in the code")
 
         if self.personal_profile is None or self.business_profile is None:
             profile_list: List[Profile] = Profile.get_all(self)
-            self.personal_profile = cast(PersonalProfile, next(filter(lambda p: p.type.lower() == "personal", profile_list)))
-            self.business_profile = cast(BusinessProfile, next(filter(lambda p: p.type.lower() == "business", profile_list)))
+            self.personal_profile = cast(PersonalProfile,
+                                         next(filter(lambda p: p.type.lower() == "personal", profile_list)))
+            self.business_profile = cast(BusinessProfile,
+                                         next(filter(lambda p: p.type.lower() == "business", profile_list)))
         else:
             self.personal_profile._initialize()
             self.business_profile._initialize()
@@ -66,7 +71,8 @@ class WiseAccount(DataClass):
         http_session: SyncHTTPSession = SyncHTTPSession(constants.URL, {
             "Authorization": f"Bearer {common.get_environmental_secret(environmental_variable)}"})
 
-        wise_account: WiseAccount = WiseAccount.model_construct(type=wise_account_type, personal_profile=None, business_profile=None)
+        wise_account: WiseAccount = WiseAccount.model_construct(type=wise_account_type, personal_profile=None,
+                                                                business_profile=None)
         wise_account._http_session = http_session
         wise_account._initialize()
 
@@ -97,39 +103,45 @@ class Profile(DataClass):
         else:
             for original_cash_account in self.cash_account_list:
                 try:
-                    new_cash_account: CashAccount = next(filter(lambda c: (c.id == original_cash_account.id), cash_account_to_update_list))
+                    new_cash_account: CashAccount = next(
+                        filter(lambda c: (c.id == original_cash_account.id), cash_account_to_update_list))
                     original_cash_account.__dict__.update(new_cash_account.model_dump())
                     cash_account_to_update_list.remove(new_cash_account)
                 except StopIteration:
                     self.cash_account_list.remove(original_cash_account)
 
-            [self.cash_account_list.append(new_cash_account) for new_cash_account in cash_account_to_update_list]  # type: ignore[func-returns-value]
+            [self.cash_account_list.append(new_cash_account) for new_cash_account in
+             cash_account_to_update_list]  # type: ignore[func-returns-value]
 
         if self.reserve_account_list is None:
             self.reserve_account_list = reserve_account_to_update_list
         else:
             for original_reserve_account in self.reserve_account_list:
                 try:
-                    new_reserve_account: ReserveAccount = next(filter(lambda r: (r.id == original_reserve_account.id), reserve_account_to_update_list))
+                    new_reserve_account: ReserveAccount = next(
+                        filter(lambda r: (r.id == original_reserve_account.id), reserve_account_to_update_list))
                     original_reserve_account.__dict__.update(new_reserve_account.model_dump())
                     reserve_account_to_update_list.remove(new_reserve_account)
                 except StopIteration:
                     self.reserve_account_list.remove(original_reserve_account)
 
-            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in reserve_account_to_update_list]  # type: ignore[func-returns-value]
+            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in
+             reserve_account_to_update_list]  # type: ignore[func-returns-value]
 
         if self.recipient_list is None:
             self.recipient_list = recipient_to_update_list
         else:
             for original_recipient in self.recipient_list:
                 try:
-                    new_recipient: Recipient = next(filter(lambda r: (r.id == original_recipient.id), recipient_to_update_list))
+                    new_recipient: Recipient = next(
+                        filter(lambda r: (r.id == original_recipient.id), recipient_to_update_list))
                     original_recipient.__dict__.update(new_recipient.model_dump())
                     recipient_to_update_list.remove(new_recipient)
                 except StopIteration:
                     self.recipient_list.remove(original_recipient)
 
-            [self.recipient_list.append(new_recipient) for new_recipient in recipient_to_update_list]  # type: ignore[func-returns-value]
+            [self.recipient_list.append(new_recipient) for new_recipient in
+             recipient_to_update_list]  # type: ignore[func-returns-value]
 
     def get_cash_account(self, currency: Currency, is_create_if_unavailable: bool = False) -> "CashAccount":
         try:
@@ -142,7 +154,8 @@ class Profile(DataClass):
                                                    f"Profile: {self.__class__.__name__}"
                                                    f"Currency: {currency.value}")
 
-    def get_reserve_account(self, account_name: str, currency: Currency, is_create_if_unavailable: bool = False) -> "ReserveAccount":
+    def get_reserve_account(self, account_name: str, currency: Currency,
+                            is_create_if_unavailable: bool = False) -> "ReserveAccount":
 
         try:
             return next(filter(lambda r: r.name == account_name and r.currency == currency, self.reserve_account_list))
@@ -166,7 +179,8 @@ class Profile(DataClass):
     @common.only_in_dev
     def _complete_all_transfers(self) -> None:
         for cash_account in self.cash_account_list:
-            http_response: HTTPResponse = self.http_session.get(f"{constants.ENDPOINT__TRANSFER__GET_ALL.replace('$profileId', str(self.id))}&status=processing&createdDateStart=2021-01-01&limit=200")
+            http_response: HTTPResponse = self.http_session.get(
+                f"{constants.ENDPOINT__TRANSFER__GET_ALL.replace('$profileId', str(self.id))}&status=processing&createdDateStart=2021-01-01&limit=200")
             [cash_account._simulate_completed_transfer(data["id"]) for data in http_response.data]
 
     @staticmethod
@@ -232,7 +246,8 @@ class Account(DataClass):
                                                                                                    str(self.id)))
         self.profile.wise_account._initialize()
 
-    def get_transactions(self, from_time: datetime.datetime | None = None, to_time: datetime.datetime | None = None, number_of_past_hours: int | None = None) -> List["Transaction"]:
+    def get_transactions(self, from_time: datetime.datetime | None = None, to_time: datetime.datetime | None = None,
+                         number_of_past_hours: int | None = None) -> List["Transaction"]:
         number_of_past_hours = 24 if number_of_past_hours is None else number_of_past_hours
         if from_time is None:
             from_time = datetime.datetime.now() - datetime.timedelta(days=number_of_past_hours)
@@ -261,14 +276,16 @@ class Account(DataClass):
                 try:
                     third_party = self.profile.get_recipient(data["details"]["recipient"]["bankAccount"])
                 except RecipientNotFoundException:
-                    third_party = data["details"]["recipient"]["name"] + " | " + data["details"]["recipient"]["bankAccount"]
+                    third_party = data["details"]["recipient"]["name"] + " | " + data["details"]["recipient"][
+                        "bankAccount"]
 
             elif transaction_type == TransactionType.CARD:
                 third_party = data["details"]["merchant"]["name"] + " | " + data["details"]["merchant"]["country"]
 
             elif transaction_type == TransactionType.CONVERSION:
                 description: str = data["details"]["description"]
-                reserve_account_name: str = description.split(" to ")[1] if " to " in description else description.split(" from ")[1]
+                reserve_account_name: str = description.split(" to ")[1] if " to " in description else \
+                description.split(" from ")[1]
                 try:
                     third_party = self.profile.get_reserve_account(reserve_account_name, self.currency)
                 except ReserveAccountNotFoundException:
@@ -317,15 +334,18 @@ class CashAccount(Account):
         self.http_session.get(url.replace("$status", "funds_converted"))
         self.http_session.get(url.replace("$status", "outgoing_payment_sent"))
 
-    async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal, reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
+    async def transfer(self, to_account: Union["CashAccount", "ReserveAccount", "Recipient"], amount: Decimal,
+                       reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
         amount = amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
         if isinstance(to_account, ReserveAccount) and self.currency != to_account.currency:
-            raise OperationNotSupportedException("Direct inter-currency transfers from a cash account to a reserve account is not supported")
+            raise OperationNotSupportedException(
+                "Direct inter-currency transfers from a cash account to a reserve account is not supported")
 
         transfer: Transfer = Transfer.model_construct()
         if isinstance(to_account, CashAccount):
-            transfer = Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount, is_amount_in_from_currency)
+            transfer = Transfer.intra_cash_account_transfer(self.profile, self, to_account, amount,
+                                                            is_amount_in_from_currency)
             await DiscordDefaults.send_message(AortaTextChannels.WISE.value, f"**Intra-Account Transfer**:\n"
                                                                              f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                                                              f"From: *{self.currency.value}*\n"
@@ -342,7 +362,9 @@ class CashAccount(Account):
                                                                              f"Amount: *{self.currency.value} {'{:,}'.format(amount)}*\n")
 
         elif isinstance(to_account, Recipient):
-            transfer = Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount, "" if reference is None else reference, is_amount_in_from_currency)
+            transfer = Transfer.cash_to_third_party_cash_account_transfer(self.profile, self, to_account, amount,
+                                                                          "" if reference is None else reference,
+                                                                          is_amount_in_from_currency)
             await DiscordDefaults.send_message(AortaTextChannels.WISE.value, f"**Third-Party Transfer**:\n"
                                                                              f"Timestamp: {get_timestamp_string(datetime.datetime.now())}\n"
                                                                              f"From: *{self.currency.value}*\n"
@@ -390,6 +412,11 @@ class CashAccount(Account):
         maximum_transfer_amount: Decimal = Decimal(1_000_000)
         amount_to_deduct: Decimal = min(self.balance - amount, maximum_transfer_amount)
         recipient: Recipient = self.profile.get_recipient("GB33BUKB20201555555555")
+
+        if amount_to_deduct < Decimal("10"):
+            amount_to_deduct = amount_to_deduct + Decimal("10")
+            self._set_minimum_balance(amount_to_deduct)
+
         await self.transfer(recipient, amount_to_deduct, is_amount_in_from_currency=True)
 
         if self.balance > amount:
@@ -443,7 +470,8 @@ class ReserveAccount(Account):
         cash_account._simulate_top_up(amount)
         await cash_account.transfer(self, amount)
         self.profile.wise_account._initialize()
-        self.balance = (self.profile.wise_account.personal_profile.get_reserve_account(self.name, self.currency)).balance
+        self.balance = (
+            self.profile.wise_account.personal_profile.get_reserve_account(self.name, self.currency)).balance
 
     @common.only_in_dev
     async def _set_balance(self, amount: Decimal) -> None:
@@ -514,15 +542,19 @@ class Recipient(DataClass):
 
     @staticmethod
     def get_all(profile: Profile) -> List["Recipient"]:
-        response: HTTPResponse = profile.http_session.get(constants.ENDPOINT__RECIPIENT__GET_ALL.replace("$profileId", str(profile.id)))
-        raw_recipient_list: List[Dict[str, Any]] = list(filter(lambda d: d["details"]["accountNumber"] is not None or d["details"]["iban"] is not None, response.data))
+        response: HTTPResponse = profile.http_session.get(
+            constants.ENDPOINT__RECIPIENT__GET_ALL.replace("$profileId", str(profile.id)))
+        raw_recipient_list: List[Dict[str, Any]] = list(
+            filter(lambda d: d["details"]["accountNumber"] is not None or d["details"]["iban"] is not None,
+                   response.data))
 
         return [Recipient(
             id=data["id"],
             account_holder_name=data["accountHolderName"],
             currency=Currency(data["currency"]),
             is_self_owned=data["ownedByCustomer"],
-            account_number=data["details"]["accountNumber"] if data["details"]["accountNumber"] is not None else data["details"]["iban"],
+            account_number=data["details"]["accountNumber"] if data["details"]["accountNumber"] is not None else
+            data["details"]["iban"],
         ) for data in raw_recipient_list]
 
 
@@ -536,7 +568,9 @@ class Quote(DataClass):
     profile: Profile
 
     @staticmethod
-    def get_quote(profile: Profile, from_account: CashAccount | ReserveAccount, to_account: CashAccount | ReserveAccount | Recipient, amount: Decimal, is_amount_in_from_currency: bool = False) -> "Quote":
+    def get_quote(profile: Profile, from_account: CashAccount | ReserveAccount,
+                  to_account: CashAccount | ReserveAccount | Recipient, amount: Decimal,
+                  is_amount_in_from_currency: bool = False) -> "Quote":
         response: HTTPResponse = profile.http_session.post(
             constants.ENDPOINT__QUOTE__GET.replace("$profileId", str(profile.id)), data={
                 "sourceCurrency": from_account.currency.value,
@@ -545,7 +579,8 @@ class Quote(DataClass):
                 "payOut": "BALANCE",
             })
 
-        payment_option: Dict[str, Any] = next(filter(lambda p: p["payIn"] == "BALANCE", response.data["paymentOptions"]))
+        payment_option: Dict[str, Any] = next(
+            filter(lambda p: p["payIn"] == "BALANCE", response.data["paymentOptions"]))
         return Quote(
             id=response.data["id"],
             from_currency=Currency(payment_option["sourceCurrency"]),
@@ -576,7 +611,8 @@ class Transfer(DataClass):
     transfer_type: TransferType | None
 
     @staticmethod
-    def intra_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: CashAccount, amount: Decimal, is_amount_in_from_currency: bool = False) -> "Transfer":
+    def intra_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: CashAccount,
+                                    amount: Decimal, is_amount_in_from_currency: bool = False) -> "Transfer":
         quote: Quote = Quote.get_quote(profile, from_account, to_account, amount, is_amount_in_from_currency)
         response: HTTPResponse = profile.http_session.post(
             constants.ENDPOINT__BALANCE__MOVE_MONEY_BETWEEN_BALANCES.replace("$profileId", str(profile.id)),
@@ -625,7 +661,9 @@ class Transfer(DataClass):
         )
 
     @staticmethod
-    def cash_to_third_party_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: Recipient, amount: Decimal, reference: str | None = None, is_amount_in_from_currency: bool = False) -> "Transfer":
+    def cash_to_third_party_cash_account_transfer(profile: Profile, from_account: CashAccount, to_account: Recipient,
+                                                  amount: Decimal, reference: str | None = None,
+                                                  is_amount_in_from_currency: bool = False) -> "Transfer":
         quote: Quote = Quote.get_quote(profile, from_account, to_account, amount, is_amount_in_from_currency)
         data: Dict[str, Any] = {
             "targetAccount": to_account.id,
@@ -727,7 +765,9 @@ class AccountCredit(DataClass):
         timestamp: datetime.datetime = common.get_timestamp_from_string(request_data["data"]["occurred_at"], "UTC")
 
         try:
-            transaction: Transaction | None = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
+            transaction: Transaction | None = next(
+                filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()),
+                       cash_account.get_transactions()))
         except StopIteration:
             transaction = None
 
@@ -741,7 +781,8 @@ class AccountCredit(DataClass):
 class WiseWebhook:
 
     @classmethod
-    async def get_balance_update_object(cls, request_data: Dict[str, Any], wise_account: WiseAccount) -> AccountDebit | AccountCredit | None:
+    async def get_balance_update_object(cls, request_data: Dict[str, Any],
+                                        wise_account: WiseAccount) -> AccountDebit | AccountCredit | None:
         if request_data["event_type"] == "transfers#state-change":
             return AccountDebit.get_from_request_data(request_data)
         elif request_data["event_type"] == "balances#credit":
