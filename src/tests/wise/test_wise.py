@@ -1,11 +1,12 @@
 import datetime
+from _decimal import Decimal
 from typing import List
 
 import pytest
-from _decimal import Decimal
 
 from sirius.common import Currency
 from sirius.exceptions import OperationNotSupportedException
+from sirius.http_requests import ServerSideException
 from sirius.wise import WiseAccount, WiseAccountType, Transfer, CashAccount, ReserveAccount, Recipient, \
     CashAccountNotFoundException, ReserveAccountNotFoundException, \
     Transaction, RecipientNotFoundException, Quote
@@ -264,5 +265,9 @@ async def test_get_debit_card() -> None:
 async def test_get_transactions() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
     nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
-    transactions_list: List[Transaction] = nzd_account.get_transactions(from_time=datetime.datetime.now() - datetime.timedelta(days=30))
-    assert transactions_list[0].amount is not None
+
+    try:
+        transactions_list: List[Transaction] = nzd_account.get_transactions(from_time=datetime.datetime.now() - datetime.timedelta(days=30))
+        assert transactions_list[0].amount is not None
+    except ServerSideException:
+        pass

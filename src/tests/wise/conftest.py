@@ -1,4 +1,5 @@
 import asyncio
+import time
 from asyncio import AbstractEventLoop
 
 import pytest
@@ -14,4 +15,5 @@ def event_loop() -> AbstractEventLoop:
 
 @pytest_asyncio.fixture(autouse=True)
 async def reset_wise_account() -> None:
+    time.sleep(1)
     await WiseAccount.get(WiseAccountType.PRIMARY).personal_profile._reset()
