@@ -1,15 +1,14 @@
 import datetime
 import uuid
+from _decimal import Decimal, ROUND_HALF_UP
 from enum import Enum, auto
 from typing import List, Dict, Any, Union, cast
 
-import pytz
-from _decimal import Decimal, ROUND_HALF_UP
 from pydantic import PrivateAttr, Field
 
 from sirius import common
 from sirius.common import DataClass, Currency
-from sirius.communication.discord import TextChannel, Bot, Server, AortaTextChannels, get_timestamp_string, \
+from sirius.communication.discord import AortaTextChannels, get_timestamp_string, \
     DiscordDefaults
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
@@ -110,8 +109,7 @@ class Profile(DataClass):
                 except StopIteration:
                     self.cash_account_list.remove(original_cash_account)
 
-            [self.cash_account_list.append(new_cash_account) for new_cash_account in
-             cash_account_to_update_list]  # type: ignore[func-returns-value]
+            [self.cash_account_list.append(new_cash_account) for new_cash_account in cash_account_to_update_list]  # type: ignore[func-returns-value]
 
         if self.reserve_account_list is None:
             self.reserve_account_list = reserve_account_to_update_list
@@ -125,8 +123,7 @@ class Profile(DataClass):
                 except StopIteration:
                     self.reserve_account_list.remove(original_reserve_account)
 
-            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in
-             reserve_account_to_update_list]  # type: ignore[func-returns-value]
+            [self.reserve_account_list.append(new_reserve_account) for new_reserve_account in reserve_account_to_update_list]  # type: ignore[func-returns-value]
 
         if self.recipient_list is None:
             self.recipient_list = recipient_to_update_list
@@ -140,8 +137,7 @@ class Profile(DataClass):
                 except StopIteration:
                     self.recipient_list.remove(original_recipient)
 
-            [self.recipient_list.append(new_recipient) for new_recipient in
-             recipient_to_update_list]  # type: ignore[func-returns-value]
+            [self.recipient_list.append(new_recipient) for new_recipient in recipient_to_update_list]  # type: ignore[func-returns-value]
 
     def get_cash_account(self, currency: Currency, is_create_if_unavailable: bool = False) -> "CashAccount":
         try:
