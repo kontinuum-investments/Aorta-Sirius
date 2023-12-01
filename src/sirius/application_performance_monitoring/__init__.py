@@ -5,7 +5,8 @@ from typing import Callable, Any, List, Dict
 from sirius import common
 from sirius.application_performance_monitoring.constants import Operation
 
-logging.basicConfig(level=logging.DEBUG, format="%(asctime)s || %(levelname)s || %(module)s.%(funcName)s\n%(message)s\n")
+
+# logging.basicConfig(level=logging.DEBUG, format="%(asctime)s || %(levelname)s || %(module)s.%(funcName)s\n%(message)s\n")
 
 
 # sentry_sdk.init(
