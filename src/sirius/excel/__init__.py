@@ -1,7 +1,7 @@
+from _decimal import Decimal
 from typing import Any, Dict, List
 
 import openpyxl
-from _decimal import Decimal
 from openpyxl.worksheet.worksheet import Worksheet
 
 from sirius.exceptions import SDKClientException
@@ -31,7 +31,7 @@ def get_excel_data(file_path: str, sheet_name: str) -> List[Dict[Any, Any]]:
     row_number: int = 0
     for row in _get_worksheet(file_path, sheet_name):
         if row_number == 0:
-            headers = [cell.value for cell in row]
+            headers = list(map(lambda c: c.value, filter(lambda c: c.value is not None, row)))
 
         else:
             excel_data: Dict[Any, Any] = {}
