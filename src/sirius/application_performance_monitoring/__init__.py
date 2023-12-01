@@ -2,27 +2,24 @@ import inspect
 import logging
 from typing import Callable, Any, List, Dict
 
-import sentry_sdk
-from sentry_sdk.integrations.logging import LoggingIntegration
-
 from sirius import common
 from sirius.application_performance_monitoring.constants import Operation
-from sirius.constants import EnvironmentSecret
 
 logging.basicConfig(level=logging.DEBUG, format="%(asctime)s || %(levelname)s || %(module)s.%(funcName)s\n%(message)s\n")
 
-sentry_sdk.init(
-    dsn=common.get_environmental_secret(EnvironmentSecret.SENTRY_URL),
-    traces_sample_rate=1.0,
-    profiles_sample_rate=1.0,
-    environment=common.get_environment().value,
-    integrations=[
-        LoggingIntegration(
-            level=logging.DEBUG,
-            event_level=logging.ERROR
-        ),
-    ],
-)
+
+# sentry_sdk.init(
+#     dsn=common.get_environmental_secret(EnvironmentSecret.SENTRY_URL),
+#     traces_sample_rate=1.0,
+#     profiles_sample_rate=1.0,
+#     environment=common.get_environment().value,
+#     integrations=[
+#         LoggingIntegration(
+#             level=logging.DEBUG,
+#             event_level=logging.ERROR
+#         ),
+#     ],
+# )
 
 
 def transaction(operation: Operation, transaction_name: str) -> Callable:
@@ -31,8 +28,8 @@ def transaction(operation: Operation, transaction_name: str) -> Callable:
             if common.is_ci_cd_pipeline_environment() or common.is_development_environment():
                 return function(*args, **kwargs)
             else:
-                with sentry_sdk.start_transaction(op=operation.value, name=transaction_name):
-                    result: Any = function(*args, **kwargs)
+                # with sentry_sdk.start_transaction(op=operation.value, name=transaction_name):
+                result: Any = function(*args, **kwargs)
             return result
 
         return wrapper
