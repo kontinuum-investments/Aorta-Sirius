@@ -47,7 +47,7 @@ class DiscordHTTPSession(AsyncHTTPSession):
             http_response: HTTPResponse = e.data["http_response"]
 
             if http_response.response_code == HTTPStatus.TOO_MANY_REQUESTS:
-                time.sleep(http_response.data["retry_after"] + 0.1)
+                await asyncio.sleep(http_response.data["retry_after"] + 0.1)
                 return await self.get(url, query_params, headers)
 
             raise e
@@ -363,12 +363,13 @@ class TextChannel(Channel):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
 
+    #   TODO: This is no longer an asynchronous function
     async def send_message(self, message: str) -> None:
         if common.is_ci_cd_pipeline_environment():
             return
 
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("$channelID", str(self.id))
-        await self.http_session.post(url, data={"content": message})
+        asyncio.ensure_future(self.http_session.post(url, data={"content": message}))
 
     async def delete(self) -> None:
         await self.http_session.delete(constants.ENDPOINT__CHANNEL__DELETE.replace("$channelID", str(self.id)))
