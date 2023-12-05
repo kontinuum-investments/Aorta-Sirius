@@ -15,5 +15,6 @@ twilio
 fastapi
 azure-identity
 azure-keyvault-secrets
+azure-keyvault-keys
 pyotp
 qrcode

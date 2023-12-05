@@ -10,16 +10,15 @@ import socket
 import string
 import tempfile
 import threading
+from _decimal import Decimal
+from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
 from typing import Callable, Any, Dict, List
 
 import pytz
 import qrcode
 import requests
-from _decimal import Decimal
 from pydantic import BaseModel, ConfigDict
-from concurrent.futures import ProcessPoolExecutor
-
 from qrcode.image.pil import PilImage
 
 from sirius.constants import EnvironmentVariable, EnvironmentSecret
@@ -151,7 +150,7 @@ def wait_for_all_coroutines(func: Callable) -> Callable:
     async def wrapper(*args: Any, **kwargs: Any) -> None:
         asyncio.create_task(func(*args, **kwargs))
         await asyncio.wait(  # type: ignore[type-var]
-            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())), # type: ignore[arg-type,union-attr,attr-defined]
+            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),  # type: ignore[arg-type,union-attr,attr-defined]
             timeout=600)
         return None
 
@@ -222,3 +221,11 @@ def get_qr_code(data_str: str) -> str:
 
     qr_code.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode()
+
+
+def get_base64_string_from_bytes(data: bytes) -> str:
+    return base64.b64encode(data).decode("utf-8")
+
+
+def get_bytes_from_base64_string(base64_string: str) -> bytes:
+    return base64.b64decode(base64_string)

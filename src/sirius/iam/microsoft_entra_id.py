@@ -7,13 +7,9 @@ from typing import Any, Dict
 from urllib.parse import urlencode
 
 import jwt
-from aiocache import cached
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicNumbers, RSAPublicKey
-from fastapi import Request
-from pydantic import BaseModel
 
 from sirius import common
+from sirius.common import DataClass
 from sirius.communication.discord import AortaTextChannels, DiscordDefaults
 from sirius.constants import EnvironmentSecret
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
@@ -21,7 +17,7 @@ from sirius.iam import constants
 from sirius.iam.exceptions import InvalidAccessTokenException, AccessTokenRetrievalTimeoutException
 
 
-class AuthenticationFlow(BaseModel):
+class AuthenticationFlow(DataClass):
     user_code: str
     device_code: str
     verification_uri: str
@@ -48,7 +44,8 @@ class MicrosoftEntraIDAuthenticationIDStore:
         raise AccessTokenRetrievalTimeoutException(f"Unauthenticated authentication: {authentication_id}")
 
 
-class MicrosoftIdentity(BaseModel):
+class MicrosoftIdentity(DataClass):
+    access_token: str
     audience_id: str
     authenticated_timestamp: datetime.datetime
     inception_timestamp: datetime.datetime
@@ -57,73 +54,13 @@ class MicrosoftIdentity(BaseModel):
     name: str
     scope: str
     user_id: str
-    ip_address: str | None = None
-    port_number: int | None = None
-
-    @staticmethod
-    @cached(ttl=86_400)
-    async def _get_microsoft_jwk(key_id: str, entra_id_tenant_id: str | None = None) -> Dict[str, Any]:
-        entra_id_tenant_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-
-        jwks_location_url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/.well-known/openid-configuration"
-        jwks_location_response: HTTPResponse = await AsyncHTTPSession(jwks_location_url).get(jwks_location_url)
-        jws_response: HTTPResponse = await AsyncHTTPSession(jwks_location_response.data["jwks_uri"]).get(jwks_location_response.data["jwks_uri"])
-        return next(filter(lambda j: j["kid"] == key_id, jws_response.data["keys"]))
-
-    @staticmethod
-    async def _rsa_public_from_access_token(access_token: str, entra_id_tenant_id: str | None = None) -> RSAPublicKey:
-        entra_id_tenant_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-        key_id: str = jwt.get_unverified_header(access_token)["kid"]
-        jwk: Dict[str, Any] = await MicrosoftIdentity._get_microsoft_jwk(key_id, entra_id_tenant_id)
-
-        return RSAPublicNumbers(
-            n=int.from_bytes(base64.urlsafe_b64decode(jwk["n"].encode("utf-8") + b"=="), "big"),
-            e=int.from_bytes(base64.urlsafe_b64decode(jwk["e"].encode("utf-8") + b"=="), "big")
-        ).public_key(default_backend())
-
-    @staticmethod
-    async def get_identity_from_request(request: Request, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
-        entra_id_client_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
-        entra_id_tenant_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-
-        if request.headers.get("authorization") is None or "Bearer " not in request.headers.get("authorization"):
-            raise InvalidAccessTokenException("Invalid Token in Header")
-
-        access_token = request.headers.get("authorization").replace("Bearer ", "")
-        microsoft_identity: MicrosoftIdentity = await MicrosoftIdentity.get_identity_from_access_token(access_token, entra_id_client_id, entra_id_tenant_id)
-        microsoft_identity.ip_address = request.client.host
-        microsoft_identity.port_number = request.client.port
-
-        return microsoft_identity
 
     @classmethod
-    async def get_identity_from_access_token(cls, access_token: str, entra_id_client_id: str | None = None, entra_id_tenant_id: str | None = None) -> "MicrosoftIdentity":
-        if common.is_development_environment():
-            return MicrosoftIdentity(
-                audience_id="",
-                authenticated_timestamp=datetime.datetime.now(),
-                inception_timestamp=datetime.datetime.now(),
-                expiry_timestamp=datetime.datetime.now() + datetime.timedelta(hours=1),
-                application_id=entra_id_client_id,
-                name=f"Test Client",
-                scope="",
-                user_id="client@test.com"
-            )
-
+    def get_identity_from_access_token(cls, access_token: str) -> "MicrosoftIdentity":
         try:
-
-            entra_id_client_id = common.get_environmental_secret(
-                EnvironmentSecret.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
-            entra_id_tenant_id = common.get_environmental_secret(
-                EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-            public_key: RSAPublicKey = await MicrosoftIdentity._rsa_public_from_access_token(access_token, entra_id_tenant_id)
-            payload: Dict[str, Any] = jwt.decode(access_token, public_key, verify=True, audience=[entra_id_client_id], algorithms=["RS256"])
-
+            payload: Dict[str, Any] = jwt.decode(access_token, options={"verify_signature": False})
             return MicrosoftIdentity(
+                access_token=access_token,
                 audience_id=payload["aud"],
                 authenticated_timestamp=datetime.datetime.utcfromtimestamp(payload["iat"]),
                 inception_timestamp=datetime.datetime.utcfromtimestamp(payload["nbf"]),
@@ -135,7 +72,7 @@ class MicrosoftIdentity(BaseModel):
             )
 
         except Exception:
-            raise InvalidAccessTokenException("Invalid token supplied")
+            raise InvalidAccessTokenException("Invalid token")
 
     @staticmethod
     def get_login_url(redirect_url: str,
@@ -162,10 +99,8 @@ class MicrosoftIdentity(BaseModel):
 
     @staticmethod
     async def _get_access_token_from_authentication_code(authentication_code: str, authentication_id: str, redirect_url: str, entra_id_tenant_id: str | None = None, entra_id_client_id: str | None = None) -> str:
-        entra_id_tenant_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-        entra_id_client_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+        entra_id_tenant_id = common.get_environmental_secret(EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+        entra_id_client_id = common.get_environmental_secret(EnvironmentSecret.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/token"
 
         try:

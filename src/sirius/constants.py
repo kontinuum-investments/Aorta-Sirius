@@ -4,6 +4,9 @@ from enum import Enum
 class EnvironmentVariable(Enum):
     ENVIRONMENT: str = "ENVIRONMENT"
     AZURE_KEY_VAULT_URL: str = "AZURE_KEY_VAULT_URL"
+    AZURE_CLIENT_ID: str = "AZURE_CLIENT_ID"
+    AZURE_CLIENT_SECRET: str = "AZURE_CLIENT_SECRET"
+    AZURE_TENANT_ID: str = "AZURE_TENANT_ID"
 
 
 class EnvironmentSecret(Enum):

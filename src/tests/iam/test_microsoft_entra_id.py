@@ -4,7 +4,6 @@ import pytest
 
 from sirius import common
 from sirius.constants import EnvironmentSecret
-from sirius.http_requests import ClientSideException
 from sirius.iam.microsoft_entra_id import MicrosoftIdentity
 
 
@@ -28,5 +27,5 @@ async def test_get_access_token() -> None:
 @pytest.mark.skip(reason="Requires Interaction")
 @pytest.mark.asyncio
 async def test_validate_jwt_token() -> None:
-    microsoft_identity: MicrosoftIdentity = await MicrosoftIdentity.get_identity_from_access_token("")
+    microsoft_identity: MicrosoftIdentity = MicrosoftIdentity.get_identity_from_access_token("")
     assert microsoft_identity.name is not None
