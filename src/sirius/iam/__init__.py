@@ -1,6 +1,6 @@
 import datetime
 import json
-from typing import Dict, Any, cast
+from typing import Dict, Any, cast, Union, Callable
 
 import jwt
 from cryptography.hazmat.backends import default_backend
@@ -39,8 +39,12 @@ class Identity(DataClass):
             return private_key
 
     @staticmethod
-    async def get_access_token_remotely(redirect_url: str, client_ip_address: str | None = None, client_port_number: int | None = None) -> str:
-        microsoft_access_token: str = await MicrosoftIdentity.get_access_token_remotely(redirect_url)
+    async def get_access_token_remotely(redirect_url: str,
+                                        client_ip_address: str | None = None,
+                                        client_port_number: int | None = None,
+                                        url_shortener_function: Union[Callable, None] = None) -> str:
+
+        microsoft_access_token: str = await MicrosoftIdentity.get_access_token_remotely(redirect_url, url_shortener_function=url_shortener_function)
         microsoft_identity: MicrosoftIdentity = MicrosoftIdentity.get_identity_from_access_token(microsoft_access_token)
         identity: Identity = Identity._get_identity_from_microsoft_identity(microsoft_identity, client_ip_address, client_port_number)
         return Identity.get_access_token_from_identity(identity)
