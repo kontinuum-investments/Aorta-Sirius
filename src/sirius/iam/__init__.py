@@ -1,6 +1,6 @@
 import datetime
 import json
-from typing import Dict, Any, cast
+from typing import Dict, Any, cast, Union, Callable
 
 import jwt
 from cryptography.hazmat.backends import default_backend
@@ -39,27 +39,27 @@ class Identity(DataClass):
             return private_key
 
     @staticmethod
-    async def get_access_token_remotely(redirect_url: str, client_ip_address: str | None = None, client_port_number: int | None = None) -> str:
-        microsoft_access_token: str = await MicrosoftIdentity.get_access_token_remotely(redirect_url)
+    async def get_access_token_remotely(redirect_url: str,
+                                        client_ip_address: str | None = None,
+                                        client_port_number: int | None = None,
+                                        url_shortener_function: Union[Callable, None] = None) -> str:
+
+        microsoft_access_token: str = await MicrosoftIdentity.get_access_token_remotely(redirect_url, url_shortener_function=url_shortener_function)
         microsoft_identity: MicrosoftIdentity = MicrosoftIdentity.get_identity_from_access_token(microsoft_access_token)
-        identity: Identity = Identity.get_identity_from_microsoft_identity(microsoft_identity, client_ip_address, client_port_number)
+        identity: Identity = Identity._get_identity_from_microsoft_identity(microsoft_identity, client_ip_address, client_port_number)
         return Identity.get_access_token_from_identity(identity)
 
     @staticmethod
-    def get_identity_from_microsoft_identity(microsoft_identity: MicrosoftIdentity, ip_address: str | None = None, port_number: int | None = None) -> "Identity":
-        return Identity(microsoft_identity=microsoft_identity, ip_address=ip_address, port_number=port_number)
-
-    @staticmethod
     def get_identity_from_request(request: Request) -> "Identity":
-        if request.headers.get("Authorization") is None or "Bearer " not in request.headers.get("Authorization"):
-            raise InvalidAccessTokenException("Invalid Token in Header")
+        if request.headers.get("Authorization") is None or "Bearer " not in request.headers.get("Authorization") or request.cookies.get("access_token") is None or "Bearer " not in request.cookies["access_token"]:
+            raise InvalidAccessTokenException("Invalid Token")
 
-        access_token: str = request.headers.get("authorization").replace("Bearer ", "")
+        access_token: str = (request.headers.get("Authorization") if "Authorization" in request.headers else request.cookies.get("Authorization")).replace("Bearer ", "")
         return Identity.get_identity_from_access_token(access_token)
 
     @staticmethod
     def get_identity_from_access_token(access_token: str) -> "Identity":
-        Identity.validate_jwt_token(access_token)
+        Identity._validate_jwt_token(access_token)
         payload: Dict[str, Any] = jwt.decode(access_token, options={"verify_signature": False})
 
         return Identity(**payload)
@@ -72,10 +72,14 @@ class Identity(DataClass):
         return jwt.encode(payload, Identity.get_private_key(), algorithm="RS256")
 
     @staticmethod
-    def validate_jwt_token(jwt_token: str) -> None:
+    def _validate_jwt_token(jwt_token: str) -> None:
         try:
             jwt.decode(jwt_token, Identity.get_private_key().public_key(), algorithms=["RS256"])
         except ExpiredSignatureError:
             raise InvalidAccessTokenException("Token has expired")
         except InvalidTokenError:
             raise InvalidAccessTokenException("Token's cryptographic verification failed")
+
+    @staticmethod
+    def _get_identity_from_microsoft_identity(microsoft_identity: MicrosoftIdentity, ip_address: str | None = None, port_number: int | None = None) -> "Identity":
+        return Identity(microsoft_identity=microsoft_identity, ip_address=ip_address, port_number=port_number)
