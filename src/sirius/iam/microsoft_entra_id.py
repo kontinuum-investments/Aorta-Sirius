@@ -3,7 +3,7 @@ import base64
 import datetime
 import hashlib
 import time
-from typing import Any, Dict
+from typing import Any, Dict, Callable, Union
 from urllib.parse import urlencode
 
 import jwt
@@ -33,7 +33,7 @@ class MicrosoftEntraIDAuthenticationIDStore:
         cls.store[authentication_id] = authentication_code
 
     @classmethod
-    async def get_or_wait(cls, authentication_id: str) -> str:
+    async def _get_or_wait(cls, authentication_id: str) -> str:
         time_out_timestamp: int = int(time.time()) + constants.ACQUIRE_ACCESS_TOKEN__POLLING_TIMEOUT_SECONDS
         while int(time.time()) < time_out_timestamp:
             if authentication_id in cls.store:
@@ -79,11 +79,11 @@ class MicrosoftIdentity(DataClass):
                       authentication_id: str,
                       entra_id_tenant_id: str | None = None,
                       entra_id_client_id: str | None = None,
-                      scope: str | None = None) -> str:
-        entra_id_tenant_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
-        entra_id_client_id = common.get_environmental_secret(
-            EnvironmentSecret.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
+                      scope: str | None = None,
+                      url_shortener_function: Union[Callable, None] = None) -> str:
+
+        entra_id_tenant_id = common.get_environmental_secret(EnvironmentSecret.ENTRA_ID_TENANT_ID) if entra_id_tenant_id is None else entra_id_tenant_id
+        entra_id_client_id = common.get_environmental_secret(EnvironmentSecret.ENTRA_ID_CLIENT_ID) if entra_id_client_id is None else entra_id_client_id
         scope = "User.Read" if scope is None else scope
 
         params: Dict[str, str] = {"client_id": entra_id_client_id,
@@ -94,8 +94,21 @@ class MicrosoftIdentity(DataClass):
                                   "state": authentication_id,
                                   "code_challenge_method": "S256",
                                   "code_challenge": base64.urlsafe_b64encode(hashlib.sha256(authentication_id.encode('utf-8')).digest()).decode('utf-8').replace("=", "")}
+        url: str = f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?{urlencode(params)}"
 
-        return f"https://login.microsoftonline.com/{entra_id_tenant_id}/oauth2/v2.0/authorize?{urlencode(params)}"
+        return url if url_shortener_function is None else url_shortener_function(url)
+
+    @staticmethod
+    async def get_access_token_remotely(redirect_url: str, discord_text_channel_name: str | None = None, url_shortener_function: Union[Callable, None] = None) -> str:
+        authentication_id: str = common.get_unique_id()
+        discord_text_channel_name = AortaTextChannels.NOTIFICATION.value if discord_text_channel_name is None else discord_text_channel_name
+        sign_in_url: str = MicrosoftIdentity.get_login_url(redirect_url, authentication_id) if url_shortener_function is None else url_shortener_function(MicrosoftIdentity.get_login_url(redirect_url, authentication_id))
+
+        await DiscordDefaults.send_message(discord_text_channel_name, "**Authentication Request**\n"
+                                                                      f"*Sign-in here*: {sign_in_url}")
+
+        authentication_code: str = await MicrosoftEntraIDAuthenticationIDStore._get_or_wait(authentication_id)
+        return await MicrosoftIdentity._get_access_token_from_authentication_code(authentication_code, authentication_id, redirect_url)
 
     @staticmethod
     async def _get_access_token_from_authentication_code(authentication_code: str, authentication_id: str, redirect_url: str, entra_id_tenant_id: str | None = None, entra_id_client_id: str | None = None) -> str:
@@ -113,14 +126,3 @@ class MicrosoftIdentity(DataClass):
         except ClientSideException as e:
             response = e.data["http_response"]
             raise ClientSideException(response.data["error_description"])
-
-    @staticmethod
-    async def get_access_token_remotely(redirect_url: str, discord_text_channel_name: str | None = None) -> str:
-        authentication_id: str = common.get_unique_id()
-        discord_text_channel_name = AortaTextChannels.NOTIFICATION.value if discord_text_channel_name is None else discord_text_channel_name
-
-        await DiscordDefaults.send_message(discord_text_channel_name, "**Authentication Request**\n"
-                                                                      f"*Sign-in here*: {MicrosoftIdentity.get_login_url(redirect_url, authentication_id)}")
-
-        authentication_code: str = await MicrosoftEntraIDAuthenticationIDStore.get_or_wait(authentication_id)
-        return await MicrosoftIdentity._get_access_token_from_authentication_code(authentication_code, authentication_id, redirect_url)

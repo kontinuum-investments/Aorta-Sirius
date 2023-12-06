@@ -42,12 +42,8 @@ class Identity(DataClass):
     async def get_access_token_remotely(redirect_url: str, client_ip_address: str | None = None, client_port_number: int | None = None) -> str:
         microsoft_access_token: str = await MicrosoftIdentity.get_access_token_remotely(redirect_url)
         microsoft_identity: MicrosoftIdentity = MicrosoftIdentity.get_identity_from_access_token(microsoft_access_token)
-        identity: Identity = Identity.get_identity_from_microsoft_identity(microsoft_identity, client_ip_address, client_port_number)
+        identity: Identity = Identity._get_identity_from_microsoft_identity(microsoft_identity, client_ip_address, client_port_number)
         return Identity.get_access_token_from_identity(identity)
-
-    @staticmethod
-    def get_identity_from_microsoft_identity(microsoft_identity: MicrosoftIdentity, ip_address: str | None = None, port_number: int | None = None) -> "Identity":
-        return Identity(microsoft_identity=microsoft_identity, ip_address=ip_address, port_number=port_number)
 
     @staticmethod
     def get_identity_from_request(request: Request) -> "Identity":
@@ -59,7 +55,7 @@ class Identity(DataClass):
 
     @staticmethod
     def get_identity_from_access_token(access_token: str) -> "Identity":
-        Identity.validate_jwt_token(access_token)
+        Identity._validate_jwt_token(access_token)
         payload: Dict[str, Any] = jwt.decode(access_token, options={"verify_signature": False})
 
         return Identity(**payload)
@@ -72,10 +68,14 @@ class Identity(DataClass):
         return jwt.encode(payload, Identity.get_private_key(), algorithm="RS256")
 
     @staticmethod
-    def validate_jwt_token(jwt_token: str) -> None:
+    def _validate_jwt_token(jwt_token: str) -> None:
         try:
             jwt.decode(jwt_token, Identity.get_private_key().public_key(), algorithms=["RS256"])
         except ExpiredSignatureError:
             raise InvalidAccessTokenException("Token has expired")
         except InvalidTokenError:
             raise InvalidAccessTokenException("Token's cryptographic verification failed")
+
+    @staticmethod
+    def _get_identity_from_microsoft_identity(microsoft_identity: MicrosoftIdentity, ip_address: str | None = None, port_number: int | None = None) -> "Identity":
+        return Identity(microsoft_identity=microsoft_identity, ip_address=ip_address, port_number=port_number)
