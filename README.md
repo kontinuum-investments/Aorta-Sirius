@@ -36,6 +36,7 @@ The Global Python SDK for the Central Finite Curve
 - `TWILIO-ACCOUNT-SID`
 - `TWILIO-WHATSAPP-NUMBER`
 - `TWILIO-SMS-NUMBER`
+- `OPEN-AI-API-KEY`
 
 ## CI/CD Pipeline
 ## Required Repository Secrets
