@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Any, List
+from typing import List, Callable
 
 from sirius.common import DataClass
 from sirius.exceptions import OperationNotSupportedException
@@ -42,18 +42,36 @@ class Context(DataClass, ABC):
         pass
 
 
+class Function(DataClass, ABC):
+    name: str
+    description: str
+    function: Callable
+
+
 class Conversation(DataClass, ABC):
     large_language_model: LargeLanguageModel
-    context_list: List[Context]
+    temperature: float
+    context_list: List[Context] = []
+    function_list: List[Function] = []
+    max_tokens: int | None = None
 
     @staticmethod
-    def get_conversation(large_language_model: LargeLanguageModel) -> "Conversation":
+    def get_conversation(large_language_model: LargeLanguageModel,
+                         temperature: float | None = 0.2,
+                         context_list: List[Context] | None = None,
+                         function_list: List[Function] | None = None) -> "Conversation":
+        context_list = [] if context_list is None else context_list
+        function_list = [] if function_list is None else function_list
+
         if large_language_model in open_ai_large_language_model_list:
             from sirius.ai.open_ai import ChatGPTConversation
-            return ChatGPTConversation(large_language_model=large_language_model, context_list=[])
+            return ChatGPTConversation(large_language_model=large_language_model,
+                                       temperature=temperature,
+                                       context_list=context_list,
+                                       function_list=function_list)
 
         raise OperationNotSupportedException(f"{large_language_model.value} is not yet supported")
 
     @abstractmethod
-    async def say(self, message: str, image_url: str | None = None, image_path: str | None = None, options: Dict[str, Any] | None = None) -> str:
+    async def say(self, message: str, image_url: str | None = None, image_path: str | None = None) -> str:
         pass
