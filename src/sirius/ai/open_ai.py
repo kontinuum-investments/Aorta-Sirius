@@ -72,19 +72,30 @@ class ChatGPTContext(Context):
 class ChatGPTFunction(Function):
 
     def __init__(self, name: str, function: Callable, **kwargs: Any):
+        function_documentation: Dict[str, Any] = common.get_function_documentation(function)
         super().__init__(function=function,
                          name=name,
-                         description=function.__doc__.split("Args:")[0].replace("\n", "").strip(),
+                         description=function_documentation["description"],
                          parameters=ChatGPTFunction._get_parameters(function),
+                         function_documentation=function_documentation,
                          **kwargs)
 
     @staticmethod
     def _get_parameters(function: Callable) -> Dict[str, Any]:
+        function_documentation: Dict[str, Any] = common.get_function_documentation(function)
+        schema: Dict[str, Any] = ChatGPTFunction._get_argument_parameters(function)
+        for argument_name in list(schema["properties"]):
+            schema["properties"][argument_name]["description"] = function_documentation["arguments"][argument_name]
+
+        return schema
+
+    @staticmethod
+    def _get_argument_parameters(function: Callable) -> Dict[str, Any]:
         annotation_dict: Dict[str, Any] = function.__annotations__
+        optional_property_list: List[str] = []
+        sample_argument_type_list: List[Any] = [1, 1.1, "a", datetime.datetime.now(), datetime.date.today()]
         builder: SchemaBuilder = SchemaBuilder()
         builder.add_schema({"type": "object", "properties": {}})
-        sample_argument_type_list: List[Any] = [1, 1.1, "a", datetime.datetime.now(), datetime.date.today()]
-        optional_property_list: List[str] = []
 
         for argument_name, argument_type in annotation_dict.items():
             if argument_name == "return":
@@ -100,9 +111,6 @@ class ChatGPTFunction(Function):
         schema: Dict[str, Any] = builder.to_schema()
         for optional_property in optional_property_list:
             schema["required"].remove(optional_property)
-
-        # TODO: Retrieve argument description from doc string
-        schema["properties"]["length"]["description"] = "The required length of the unique ID"
 
         return schema
 

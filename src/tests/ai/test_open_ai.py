@@ -29,13 +29,16 @@ async def test_picture_context() -> None:
 @pytest.mark.asyncio
 async def test_function_call() -> None:
     def f(length: int | None = 16) -> Dict[str, Any]:
-        """Generates a unique ID in the Central Finite Curve's unique ID format
+        """
         Args:
-            length: The length of the unique ID that you need to generate
+            length: The length of the unique ID in the Central Finite Curve's unique ID format
+
+        Returns:
+            A unique ID in the Central Finite Curve's unique ID format
         """
         return {"unique_id": common.get_unique_id(length)}
 
     chat_gpt_function: ChatGPTFunction = ChatGPTFunction("UNIQUE_ID", f)
     conversation: Conversation = Conversation.get_conversation(LargeLanguageModel.GPT35_TURBO, function_list=[chat_gpt_function])
-    response: str = await conversation.say("Generate a unique ID in the Central Finite Curve's unique ID format that has a length of 10", )
+    response: str = await conversation.say("Generate a unique ID in the Central Finite Curve's unique ID format that has a length of 32")
     assert response is not None

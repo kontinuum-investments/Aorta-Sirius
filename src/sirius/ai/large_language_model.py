@@ -47,6 +47,7 @@ class Function(DataClass, ABC):
     description: str
     function: Callable
     parameters: Dict[str, Any]
+    function_documentation: Dict[str, Any]
 
 
 class Conversation(DataClass, ABC):
