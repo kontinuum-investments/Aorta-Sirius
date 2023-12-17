@@ -243,7 +243,7 @@ def get_function_documentation(function: Callable) -> Dict[str, Any]:
         argument_name: str = raw_argument_documentation.strip().split(":")[0].strip().replace(" ", "")
         argument_documentation: str = raw_argument_documentation.strip().split(":")[1].strip()
 
-        if argument_name not in function.__annotations__ or not any("length" == a for a in list(function.__annotations__)):
+        if argument_name not in function.__annotations__ or not any(argument_name == a for a in list(function.__annotations__)):
             raise SDKClientException(f"Invalid documentation for the function {function.__name__}")
 
         function_documentation["arguments"] = {argument_name: argument_documentation}
