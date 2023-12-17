@@ -219,7 +219,7 @@ def get_qr_code(data_str: str) -> str:
     buffered: io.BytesIO = io.BytesIO()
     qr_code: PilImage = qrcode.make(data_str)
 
-    qr_code.save(buffered, format="PNG")
+    qr_code.save(buffered)
     return base64.b64encode(buffered.getvalue()).decode()
 
 
