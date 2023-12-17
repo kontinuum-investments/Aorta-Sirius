@@ -68,7 +68,12 @@ class ChatGPTContext(Context):
 
 
 class ChatGPTFunction(Function):
-    pass
+
+    def __init__(self, name: str, function: Callable, **kwargs: Any):
+        super().__init__(function=function,
+                         name=name,
+                         description=function.__doc__,
+                         **kwargs)
 
 
 class ChatGPTConversation(Conversation):

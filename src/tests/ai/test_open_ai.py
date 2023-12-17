@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Any, Dict
 
 import pytest
 
@@ -25,11 +25,14 @@ async def test_picture_context() -> None:
     assert response is not None
 
 
-@pytest.mark.skip(reason="Chargeable")
+# @pytest.mark.skip(reason="Chargeable")
 @pytest.mark.asyncio
 async def test_function_call() -> None:
-    f: Callable = lambda: {"unique_id": common.get_unique_id()}
-    chat_gpt_function: ChatGPTFunction = ChatGPTFunction(name="UNIQUE_ID", function=f, description="Generates a unique ID in the Central Finite Curve's unique ID format")
+    def f() -> Dict[str, Any]:
+        """Generates a unique ID in the Central Finite Curve's unique ID format"""
+        return {"unique_id": common.get_unique_id()}
+
+    chat_gpt_function: ChatGPTFunction = ChatGPTFunction("UNIQUE_ID", f)
     conversation: Conversation = Conversation.get_conversation(LargeLanguageModel.GPT35_TURBO, function_list=[chat_gpt_function])
     response: str = await conversation.say("Generate a unique ID in the Central Finite Curve's unique ID format", )
     assert response is not None
