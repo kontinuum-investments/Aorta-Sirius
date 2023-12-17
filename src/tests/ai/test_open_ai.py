@@ -25,7 +25,7 @@ async def test_picture_context() -> None:
     assert response is not None
 
 
-# @pytest.mark.skip(reason="Chargeable")
+@pytest.mark.skip(reason="Chargeable")
 @pytest.mark.asyncio
 async def test_function_call() -> None:
     def f(length: int | None = 16) -> Dict[str, Any]:
