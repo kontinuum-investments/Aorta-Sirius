@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Callable
+from typing import List, Callable, Dict, Any
 
 from sirius.common import DataClass
 from sirius.exceptions import OperationNotSupportedException
@@ -46,6 +46,7 @@ class Function(DataClass, ABC):
     name: str
     description: str
     function: Callable
+    parameters: Dict[str, Any]
 
 
 class Conversation(DataClass, ABC):

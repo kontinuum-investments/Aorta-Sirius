@@ -1,7 +1,9 @@
 import base64
+import datetime
 import json
 from typing import Dict, List, Any, Callable
 
+from genson import SchemaBuilder
 from openai import AsyncOpenAI
 from openai.types.chat.chat_completion import ChatCompletion
 
@@ -72,8 +74,37 @@ class ChatGPTFunction(Function):
     def __init__(self, name: str, function: Callable, **kwargs: Any):
         super().__init__(function=function,
                          name=name,
-                         description=function.__doc__,
+                         description=function.__doc__.split("Args:")[0].replace("\n", "").strip(),
+                         parameters=ChatGPTFunction._get_parameters(function),
                          **kwargs)
+
+    @staticmethod
+    def _get_parameters(function: Callable) -> Dict[str, Any]:
+        annotation_dict: Dict[str, Any] = function.__annotations__
+        builder: SchemaBuilder = SchemaBuilder()
+        builder.add_schema({"type": "object", "properties": {}})
+        sample_argument_type_list: List[Any] = [1, 1.1, "a", datetime.datetime.now(), datetime.date.today()]
+        optional_property_list: List[str] = []
+
+        for argument_name, argument_type in annotation_dict.items():
+            if argument_name == "return":
+                continue
+
+            if isinstance(None, argument_type):
+                optional_property_list.append(argument_name)
+
+            for sample_argument in sample_argument_type_list:
+                if isinstance(sample_argument, argument_type):
+                    builder.add_object({argument_name: sample_argument})
+
+        schema: Dict[str, Any] = builder.to_schema()
+        for optional_property in optional_property_list:
+            schema["required"].remove(optional_property)
+
+        # TODO: Retrieve argument description from doc string
+        schema["properties"]["length"]["description"] = "The required length of the unique ID"
+
+        return schema
 
 
 class ChatGPTConversation(Conversation):
@@ -122,7 +153,8 @@ class ChatGPTConversation(Conversation):
             "function": {
                 "name": f1.name,
                 "description": f1.description,
-            }
+                "parameters": f1.parameters
+            },
         }
 
         return list(map(f, self.function_list))
