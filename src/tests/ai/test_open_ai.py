@@ -38,7 +38,7 @@ async def test_function_call() -> None:
         """
         return {"unique_id": common.get_unique_id(length)}
 
-    chat_gpt_function: ChatGPTFunction = ChatGPTFunction("UNIQUE_ID", f)
+    chat_gpt_function: ChatGPTFunction = ChatGPTFunction(f)
     conversation: Conversation = Conversation.get_conversation(LargeLanguageModel.GPT35_TURBO, function_list=[chat_gpt_function])
     response: str = await conversation.say("Generate a unique ID in the Central Finite Curve's unique ID format that has a length of 32")
     assert response is not None

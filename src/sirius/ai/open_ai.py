@@ -71,10 +71,10 @@ class ChatGPTContext(Context):
 
 class ChatGPTFunction(Function):
 
-    def __init__(self, name: str, function: Callable, **kwargs: Any):
+    def __init__(self, function: Callable, **kwargs: Any):
         function_documentation: Dict[str, Any] = common.get_function_documentation(function)
         super().__init__(function=function,
-                         name=name,
+                         name=common.get_unique_id(),
                          description=function_documentation["description"],
                          parameters=ChatGPTFunction._get_parameters(function),
                          function_documentation=function_documentation,
