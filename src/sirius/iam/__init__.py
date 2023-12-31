@@ -51,7 +51,8 @@ class Identity(DataClass):
 
     @staticmethod
     def get_identity_from_request(request: Request) -> "Identity":
-        if request.headers.get("Authorization") is None or "Bearer " not in request.headers.get("Authorization") or request.cookies.get("access_token") is None or "Bearer " not in request.cookies["access_token"]:
+        if (("Authorization" not in request.headers or "Bearer " not in request.headers.get("Authorization")) and
+                ("access_token" not in request.cookies or "Bearer " not in request.cookies["access_token"])):
             raise InvalidAccessTokenException("Invalid Token")
 
         access_token: str = (request.headers.get("Authorization") if "Authorization" in request.headers else request.cookies.get("Authorization")).replace("Bearer ", "")
