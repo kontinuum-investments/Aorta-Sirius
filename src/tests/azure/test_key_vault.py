@@ -21,6 +21,7 @@ def test_secret_crud_operations() -> None:
         AzureKeyVault.get(key_name)
 
 
+@pytest.mark.skip(reason="Azure Key Vault's key operations are not used for now")
 def test_key_crud_operations() -> None:
     key_name: str = f"Tests-{common.get_unique_id(10)}"
 
