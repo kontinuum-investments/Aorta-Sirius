@@ -21,6 +21,7 @@ def test_secret_crud_operations() -> None:
         AzureKeyVault.get(key_name)
 
 
+@pytest.mark.skip(reason="Azure Key Vault's key operations are not used for now")
 def test_key_crud_operations() -> None:
     key_name: str = f"Tests-{common.get_unique_id(10)}"
 
@@ -31,6 +32,7 @@ def test_key_crud_operations() -> None:
         AzureKeyVault.get_key(key_name)
 
 
+@pytest.mark.skip(reason="Azure Key Vault's key operations are not used for now")
 def test_encrypt_and_decrypt_data() -> None:
     data: Dict[str, str] = {"user": "john.doe@outlook.com"}
     encrypted_data: bytes = AzureKeyVaultCryptography.get_encrypted_data(AUTHENTICATION_KEY_NAME, json.dumps(data).encode())
