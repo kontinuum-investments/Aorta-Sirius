@@ -221,7 +221,7 @@ async def test_cash_to_same_currency_savings_account_transfer() -> None:
 async def test_cash_to_same_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
     usd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.USD)
-    recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
+    recipient: Recipient = wise_account.personal_profile.get_recipient("12345678901234")
     usd_account._set_minimum_balance(Decimal("5"))
     transfer: Transfer = await usd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
@@ -232,7 +232,7 @@ async def test_cash_to_same_currency_third_party_transfer() -> None:
 async def test_cash_to_different_currency_third_party_transfer() -> None:
     wise_account: WiseAccount = WiseAccount.get(WiseAccountType.PRIMARY)
     nzd_account: CashAccount = wise_account.personal_profile.get_cash_account(Currency.NZD)
-    recipient: Recipient = wise_account.personal_profile.get_recipient("633736902")
+    recipient: Recipient = wise_account.personal_profile.get_recipient("12345678901234")
     nzd_account._set_minimum_balance(Decimal("5"))
     transfer: Transfer = await nzd_account.transfer(recipient, Decimal("1"))
     assert transfer.id is not None
