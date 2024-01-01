@@ -219,7 +219,7 @@ def get_qr_code(data_str: str) -> str:
     buffered: io.BytesIO = io.BytesIO()
     qr_code: PilImage = qrcode.make(data_str)
 
-    qr_code.save(buffered, format="PNG")
+    qr_code.save(buffered)
     return base64.b64encode(buffered.getvalue()).decode()
 
 
@@ -229,3 +229,23 @@ def get_base64_string_from_bytes(data: bytes) -> str:
 
 def get_bytes_from_base64_string(base64_string: str) -> bytes:
     return base64.b64decode(base64_string)
+
+
+def get_function_documentation(function: Callable) -> Dict[str, Any]:
+    return_documentation: str = function.__doc__.replace("\n", "").split("Returns:")[1].strip()
+    function_documentation: Dict[str, Any] = {"description": f"Retrieves {return_documentation}",
+                                              "arguments": {}}
+
+    for raw_argument_documentation in function.__doc__.split("Returns:")[0].split("Args:")[1].split("\n"):
+        if raw_argument_documentation.strip().replace(" ", "") == "":
+            continue
+
+        argument_name: str = raw_argument_documentation.strip().split(":")[0].strip().replace(" ", "")
+        argument_documentation: str = raw_argument_documentation.strip().split(":")[1].strip()
+
+        if argument_name not in function.__annotations__ or not any(argument_name == a for a in list(function.__annotations__)):
+            raise SDKClientException(f"Invalid documentation for the function {function.__name__}")
+
+        function_documentation["arguments"] = {argument_name: argument_documentation}
+
+    return function_documentation
