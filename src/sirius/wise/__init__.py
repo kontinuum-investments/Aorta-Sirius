@@ -411,7 +411,7 @@ class CashAccount(Account):
 
         maximum_transfer_amount: Decimal = Decimal(1_000_000)
         amount_to_deduct: Decimal = min(self.balance - amount, maximum_transfer_amount)
-        recipient: Recipient = self.profile.get_recipient("1234567890")
+        recipient: Recipient = self.profile.get_recipient("12345678901234")
 
         if amount_to_deduct < Decimal("10"):
             amount_to_deduct = amount_to_deduct + Decimal("10")
