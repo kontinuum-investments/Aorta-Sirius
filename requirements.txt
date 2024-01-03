@@ -3,13 +3,13 @@ motor
 pydantic
 httpx
 msal
-pyjwt>=2.8.0
+pyjwt
 aiocache
 apscheduler
 motor
 pyopenssl
-cryptography==38.0.4
-pyOpenSSL==22.1.0
+cryptography
+pyOpenSSL
 openpyxl
 twilio
 fastapi
