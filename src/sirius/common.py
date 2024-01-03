@@ -149,8 +149,8 @@ def wait_for_all_coroutines(func: Callable) -> Callable:
     # TODO: Manage Exceptions
     async def wrapper(*args: Any, **kwargs: Any) -> None:
         asyncio.create_task(func(*args, **kwargs))
-        await asyncio.wait(  # type: ignore[type-var]
-            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),  # type: ignore[arg-type,union-attr,attr-defined]
+        await asyncio.wait(
+            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),
             timeout=600)
         return None
 
