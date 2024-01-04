@@ -172,6 +172,10 @@ def get_decimal_str(decimal: Decimal) -> str:
     return "{:,.2f}".format(float(decimal))
 
 
+def get_date_string(date: datetime.date) -> str:
+    return date.strftime("%Y-%m-%d")
+
+
 def only_in_dev(func: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
         if not is_development_environment():
