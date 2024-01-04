@@ -742,6 +742,7 @@ class AccountDebit(DataClass):
     is_attempted: bool
     is_successful: bool
     timestamp: datetime.datetime
+    transaction: Transaction | None = None
 
     @staticmethod
     def get_from_request_data(request_data: Dict[str, Any]) -> "AccountDebit":
