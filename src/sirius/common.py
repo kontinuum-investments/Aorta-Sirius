@@ -173,7 +173,7 @@ def get_decimal_str(decimal: Decimal) -> str:
 
 
 def get_date_string(date: datetime.date) -> str:
-    return date.strftime("%Y-%m-%d")
+    return date.strftime("%d/%b/%Y")
 
 
 def only_in_dev(func: Callable) -> Callable:
