@@ -8,23 +8,7 @@ on:
         - production
 
 jobs:
-  Qodana-Scan:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
-      - name: Installing Python
-        run: sudo apt update && sudo apt install python3.12
-
-      - name: Installing Dependencies
-        run: python3 -m pip install -r requirements.txt
-
-      - name: 'Qodana Scan'
-        uses: JetBrains/qodana-action@main
-        env:
-          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
   Validate:
     runs-on: ubuntu-latest
@@ -34,7 +18,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Installing Python
-        run: sudo apt update && sudo apt install python3.12
+        run: sudo apt update && sudo add-apt-repository ppa:deadsnakes/ppa -y && sudo apt install python3.12
 
       - name: Installing Dependencies
         run: pip install -r requirements.txt && pip install -r requirements-dev.txt
@@ -66,7 +50,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Installing Python
-        run: sudo apt update && sudo apt install python3.12 twine
+        run: sudo apt update && sudo add-apt-repository ppa:deadsnakes/ppa -y && sudo apt install python3.12 twine
 
       - name: Packaging the SDK
         run: python3 setup.py sdist
