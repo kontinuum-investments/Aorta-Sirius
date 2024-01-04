@@ -141,22 +141,6 @@ def threaded(func: Callable) -> Callable:
     return wrapper
 
 
-def wait_for_all_coroutines(func: Callable) -> Callable:
-    if not inspect.iscoroutinefunction(func):
-        raise SDKClientException(
-            f"Synchronous method used to in asynchronous context: {func.__module__}.{func.__name__}")
-
-    # TODO: Manage Exceptions
-    async def wrapper(*args: Any, **kwargs: Any) -> None:
-        asyncio.create_task(func(*args, **kwargs))
-        await asyncio.wait(
-            set(filter(lambda t: ("wait_for_all_coroutines" not in t.get_coro().__qualname__), asyncio.all_tasks())),
-            timeout=600)
-        return None
-
-    return wrapper
-
-
 def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[Any, Any]) -> bool:
     if not all(key in one_dict for key in another_dict):
         return False
