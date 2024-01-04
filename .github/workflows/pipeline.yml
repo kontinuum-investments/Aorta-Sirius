@@ -21,7 +21,7 @@ jobs:
         run: sudo apt update && sudo add-apt-repository ppa:deadsnakes/ppa -y && sudo apt install python3.12
 
       - name: Installing Dependencies
-        run: pip install -r requirements.txt && pip install -r requirements-dev.txt
+        run: pip install -r requirements.txt --upgrade && pip install -r requirements-dev.txt --upgrade
 
       - name: Running MyPy check
         run: mypy . --install-types --non-interactive
