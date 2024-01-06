@@ -212,6 +212,7 @@ class BusinessProfile(Profile):
 
 
 class Transaction(DataClass):
+    id: int | None
     account: "Account" = Field(exclude=True)
     timestamp: datetime.datetime
     type: TransactionType
@@ -265,6 +266,12 @@ class Account(DataClass):
         for data in response.data["transactions"]:
             transaction_type: TransactionType = TransactionType(data["details"]["type"])
             third_party: str | ReserveAccount | Recipient
+            id: int | None
+
+            try:
+                id = int(data["referenceNumber"].replace("TRANSFER-", ""))
+            except ValueError:
+                id = None
 
             if transaction_type == TransactionType.DEPOSIT:
                 third_party = data["details"]["senderName"] + " | " + data["details"]["senderAccount"]
@@ -282,13 +289,14 @@ class Account(DataClass):
             elif transaction_type == TransactionType.CONVERSION:
                 description: str = data["details"]["description"]
                 reserve_account_name: str = description.split(" to ")[1] if " to " in description else \
-                description.split(" from ")[1]
+                    description.split(" from ")[1]
                 try:
                     third_party = self.profile.get_reserve_account(reserve_account_name, self.currency)
                 except ReserveAccountNotFoundException:
                     third_party = reserve_account_name
 
             transaction_list.append(Transaction(
+                id=id,
                 account=self,
                 timestamp=data["date"],
                 type=transaction_type,
@@ -727,8 +735,7 @@ class DebitCard(DataClass):
     # TODO: Find out why this endpoint returns a 403 (Unauthorized)
     @staticmethod
     def get_all(profile: Profile) -> List["DebitCard"]:
-        response: HTTPResponse = profile.http_session.get(
-            constants.ENDPOINT__DEBIT_CARD__GET_ALL.replace("$profileId", str(profile.id)))
+        response: HTTPResponse = profile.http_session.get(constants.ENDPOINT__DEBIT_CARD__GET_ALL.replace("$profileId", str(profile.id)))
         return [DebitCard(
             profile=profile,
             token=data["token"],
@@ -745,11 +752,25 @@ class AccountDebit(DataClass):
     transaction: Transaction | None = None
 
     @staticmethod
-    def get_from_request_data(request_data: Dict[str, Any]) -> "AccountDebit":
+    def get_from_request_data(request_data: Dict[str, Any], wise_account: WiseAccount) -> "AccountDebit":
+        personal_profile: PersonalProfile = wise_account.personal_profile
+        id: int = request_data["data"]["resource"]["id"]
+        cash_account: CashAccount
+        transaction: Transaction
+
+        for ca in personal_profile.cash_account_list:
+            try:
+                transaction = next(filter(lambda t: id == t.id, ca.get_transactions()))
+                cash_account = cast(CashAccount, transaction.account)
+                break
+            except StopIteration:
+                continue
+
         return AccountDebit(wise_id=request_data["data"]["resource"]["id"],
                             is_attempted=request_data["data"]["current_state"] == "incoming_payment_waiting",
                             is_successful=request_data["data"]["current_state"] == "outgoing_payment_sent",
-                            timestamp=request_data["data"]["occurred_at"])
+                            timestamp=request_data["data"]["occurred_at"],
+                            transaction=transaction)
 
 
 class AccountCredit(DataClass):
@@ -766,9 +787,7 @@ class AccountCredit(DataClass):
         timestamp: datetime.datetime = common.get_timestamp_from_string(request_data["data"]["occurred_at"], "UTC")
 
         try:
-            transaction: Transaction | None = next(
-                filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()),
-                       cash_account.get_transactions()))
+            transaction: Transaction | None = next(filter(lambda t: int(t.timestamp.timestamp()) == int(timestamp.timestamp()), cash_account.get_transactions()))
         except StopIteration:
             transaction = None
 
@@ -782,10 +801,10 @@ class AccountCredit(DataClass):
 class WiseWebhook:
 
     @classmethod
-    async def get_balance_update_object(cls, request_data: Dict[str, Any],
-                                        wise_account: WiseAccount) -> AccountDebit | AccountCredit | None:
+    def get_balance_update_object(cls, request_data: Dict[str, Any],
+                                  wise_account: WiseAccount) -> AccountDebit | AccountCredit | None:
         if request_data["event_type"] == "transfers#state-change":
-            return AccountDebit.get_from_request_data(request_data)
+            return AccountDebit.get_from_request_data(request_data, wise_account)
         elif request_data["event_type"] == "balances#credit":
             return AccountCredit.get_from_request_data(request_data, wise_account)
 
