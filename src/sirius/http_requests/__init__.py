@@ -100,7 +100,7 @@ class AsyncHTTPSession(HTTPSession):
                 headers = {} if headers is None else headers
                 headers["content-type"] = "application/json"
 
-        http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data_string, headers=headers))
+        http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data_string, headers=headers))  # type: ignore[arg-type]
         if not http_response.is_successful:
             AsyncHTTPSession.raise_http_exception(http_response)
 
