@@ -16,7 +16,10 @@ The Global Python SDK for the Central Finite Curve
 ## Discord
 1. Create a Discord server with the same name as the value for the key vault secret `APPLICATION-NAME`
 2. Add the Discord bot to the server - [Documentation](https://discordjs.guide/preparations/adding-your-bot-to-servers.html#creating-and-using-your-invite-link)
-   1. Grant `Manage Server` permissions to the bot
+   1. Grant following permissions to the bot:
+      1. `Administrator` _(To be reviewed later)_
+3. Add the bot to a list of members who can add each channel created _(this will be automated in the future)_
+   1. Go to `Edit Channel` -> `Permissions` -> `Add members of roles`
 
 ## Azure
 ### Key Vault

@@ -92,7 +92,15 @@ class AsyncHTTPSession(HTTPSession):
 
     @application_performance_monitoring.transaction(Operation.HTTP_REQUEST, "PUT")
     async def put(self, url: str, data: Dict[str, Any], headers: Dict[str, Any] | None = None) -> HTTPResponse:
-        http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data, headers=headers))
+        data_string: str | None = None
+        if data is not None:
+            data_string = json.dumps(data)
+
+            if headers is None or "content-type" not in headers:
+                headers = {} if headers is None else headers
+                headers["content-type"] = "application/json"
+
+        http_response: HTTPResponse = HTTPResponse(await self.client.put(url, data=data_string, headers=headers))
         if not http_response.is_successful:
             AsyncHTTPSession.raise_http_exception(http_response)
 
