@@ -13,17 +13,19 @@ The Global Python SDK for the Central Finite Curve
 - `AZURE_CLIENT_SECRET` - [Documentation](https://learn.microsoft.com/en-us/azure/industry/training-services/microsoft-community-training/frequently-asked-questions/generate-new-clientsecret-link-to-key-vault)
 - `AZURE_KEY_VAULT_URL`
 
+## Discord
+1. Create a Discord server with the same name as the value for the key vault secret `APPLICATION-NAME`
+2. Add the Discord bot to the server - [Documentation](https://discordjs.guide/preparations/adding-your-bot-to-servers.html#creating-and-using-your-invite-link)
+   1. Grant `Manage Server` permissions to the bot
+
 ## Azure
-
 ### Key Vault
-
 1. Create a KeyVault
 2. Assign appropriate role to the App Registration
    1. `Key Vault Secrets User` - If you only need read permissions
    2. `Key Vault Secrets Officer` - If you need both read and write permissions
 
 ### Required Key Vault Secrets
-
 - `APPLICATION-NAME` _(Used as the default Discord Server Name)_
 - `DISCORD-BOT-TOKEN`
 - `SENTRY-URL`
