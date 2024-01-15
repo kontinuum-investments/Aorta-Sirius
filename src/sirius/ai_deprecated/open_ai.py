@@ -8,7 +8,7 @@ from openai import AsyncOpenAI
 from openai.types.chat.chat_completion import ChatCompletion
 
 from sirius import common
-from sirius.ai.large_language_model import LargeLanguageModel, Conversation, Context, Function
+from sirius.ai_deprecated.large_language_model import LargeLanguageModel, Conversation, Context, Function
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import SDKClientException
 

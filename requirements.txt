@@ -18,5 +18,6 @@ azure-keyvault-secrets
 azure-keyvault-keys
 pyotp
 qrcode
-openai
 genson
+langchain
+langchain-openai
