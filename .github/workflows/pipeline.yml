@@ -21,7 +21,7 @@ jobs:
         run: sudo apt update && sudo apt upgrade && sudo add-apt-repository ppa:deadsnakes/ppa -y && sudo apt install python3.11
 
       - name: Installing Dependencies
-        run: python3.11 -m pip install -r requirements.txt --upgrade && python3.11 -m pip install -r requirements-dev.txt --upgrade
+        run: mkdir /home/runner/.local/lib/python3.11/site-packages/google && python3.11 -m pip install -r requirements.txt --upgrade && python3.11 -m pip install -r requirements-dev.txt --upgrade
 
       - name: Running MyPy check
         run: python3.11 -m mypy . --install-types --non-interactive
