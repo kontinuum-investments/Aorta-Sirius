@@ -21,3 +21,4 @@ qrcode
 genson
 langchain
 langchain-openai
+discord

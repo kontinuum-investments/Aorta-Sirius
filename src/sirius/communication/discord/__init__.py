@@ -6,6 +6,7 @@ from http import HTTPStatus
 from logging import Logger
 from typing import List, Dict, Any, Union
 
+import discord
 from pydantic import PrivateAttr
 
 from sirius import application_performance_monitoring, common
@@ -395,9 +396,30 @@ class TextChannel(Channel):
         return text_channel
 
 
+class Author(DataClass):
+    id: int
+    display_name: str
+    global_name: str
+    username: str
+
+
 class Message(DataClass):
     id: int
     content: str
+    author: Author
+
+    @staticmethod
+    def get(message: discord.message.Message) -> "Message":
+        return Message(
+            id=message.id,
+            content=message.system_content,
+            author=Author(
+                id=message.author.id,
+                display_name=message.author.display_name,
+                global_name=message.author.global_name,
+                username=message.author.name
+            )
+        )
 
 
 def get_timestamp_string(timestamp: datetime.datetime | datetime.date) -> str:
