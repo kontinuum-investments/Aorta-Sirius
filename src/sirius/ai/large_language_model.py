@@ -22,6 +22,8 @@ open_ai_large_language_model_list: List["LargeLanguageModel"] = [
     LargeLanguageModel.GPT4,
     LargeLanguageModel.GPT4_32K,
     LargeLanguageModel.GPT4_VISION,
+    LargeLanguageModel.GPT4_TURBO,
+    LargeLanguageModel.GPT4_TURBO_VISION,
 ]
 
 

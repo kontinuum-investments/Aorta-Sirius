@@ -13,7 +13,7 @@ from sirius.ai.large_language_model import LargeLanguageModel, Conversation, Con
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import SDKClientException
 
-function_calling_supported_models: List[LargeLanguageModel] = [LargeLanguageModel.GPT35_TURBO, LargeLanguageModel.GPT4]
+function_calling_supported_models: List[LargeLanguageModel] = [LargeLanguageModel.GPT35_TURBO, LargeLanguageModel.GPT4, LargeLanguageModel.GPT4_TURBO]
 
 
 class ChatGPTContext(Context):
@@ -144,7 +144,7 @@ class ChatGPTConversation(Conversation):
 
     def _validate(self, message: str, image_url: str | None = None, image_path: str | None = None) -> None:
         if image_url is not None or image_path is not None:
-            if self.large_language_model != LargeLanguageModel.GPT4_VISION:
+            if self.large_language_model != LargeLanguageModel.GPT4_VISION and self.large_language_model != LargeLanguageModel.GPT4_TURBO_VISION:
                 raise SDKClientException(f"Only GPT-4V model can be used to analyze images")
 
             elif image_url is not None and image_path is None:
