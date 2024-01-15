@@ -5,6 +5,8 @@ requests
 pytest
 pytest_asyncio
 pytest-cov
+
+#   To be removed after https://github.com/python/mypy/issues/16767 is fixed
 types-protobuf==4.24.0.4
 types-pyopenssl==23.3.0.0
 types-redis==4.6.0.11
