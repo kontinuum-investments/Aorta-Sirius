@@ -23,9 +23,6 @@ jobs:
       - name: Installing Dependencies
         run: python3.11 -m pip install -r requirements.txt --upgrade && python3.11 -m pip install -r requirements-dev.txt --upgrade
 
-      - name: Manually installing some types due to a Mypy bug (https://github.com/python/mypy/issues/16767)
-        run: python3.11 -m pip install types-protobuf=4.24.0.4 types-pyopenssl=23.3.0.0 types-redis=4.6.0.11
-
       - name: Running MyPy check
         run: python3.11 -m mypy . --install-types --non-interactive
 
