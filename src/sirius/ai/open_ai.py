@@ -5,10 +5,11 @@ from typing import Dict, List, Any, Callable
 
 from genson import SchemaBuilder
 from openai import AsyncOpenAI
+from openai._types import NOT_GIVEN
 from openai.types.chat.chat_completion import ChatCompletion
 
 from sirius import common
-from sirius.ai_deprecated.large_language_model import LargeLanguageModel, Conversation, Context, Function
+from sirius.ai.large_language_model import LargeLanguageModel, Conversation, Context, Function
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import SDKClientException
 
@@ -168,13 +169,16 @@ class ChatGPTConversation(Conversation):
         return list(map(f, self.function_list))
 
     async def _get_chat_completion(self) -> ChatCompletion:
+        tools: List[Dict[str, Any]] = self._get_tools_list()
+
+        #   TODO: Optimize
         return await self._client.chat.completions.create(model=self.large_language_model.value,  # type: ignore[call-overload]
                                                           messages=[context.model_dump(exclude_none=True) for context in self.context_list],
                                                           n=1,
                                                           temperature=self.temperature,
                                                           max_tokens=self.max_tokens,
-                                                          tools=self._get_tools_list(),
-                                                          tool_choice="auto")
+                                                          tools=tools if len(tools) > 0 else NOT_GIVEN,
+                                                          tool_choice="auto" if len(tools) > 0 else NOT_GIVEN)
 
     async def _get_response(self) -> str:
         chat_completion: ChatCompletion = await self._get_chat_completion()

@@ -4,7 +4,7 @@ import time
 from enum import Enum
 from http import HTTPStatus
 from logging import Logger
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 
 import discord
 from pydantic import PrivateAttr
@@ -399,14 +399,15 @@ class TextChannel(Channel):
 class Author(DataClass):
     id: int
     display_name: str
-    global_name: str
     username: str
+    is_bot: bool
 
 
 class Message(DataClass):
     id: int
     content: str
     author: Author
+    reference: Optional["Message"] = None
 
     @staticmethod
     def get(message: discord.message.Message) -> "Message":
@@ -416,9 +417,10 @@ class Message(DataClass):
             author=Author(
                 id=message.author.id,
                 display_name=message.author.display_name,
-                global_name=message.author.global_name,
-                username=message.author.name
-            )
+                username=message.author.name,
+                is_bot=message.author.bot
+            ),
+            reference=Message.get(message.reference.resolved) if message.reference.resolved is not None else None
         )
 
 
