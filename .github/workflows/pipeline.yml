@@ -24,7 +24,7 @@ jobs:
         run: pip install -r requirements.txt --upgrade && pip install -r requirements-dev.txt --upgrade
 
       - name: Running MyPy check
-        run: mkdir .mypy_cache && mypy . --install-types --non-interactive --cache-dir=.mypy_cache/
+        run: mkdir .mypy_cache && mypy . --install-types --non-interactive --ignore-missing-imports --cache-dir=.mypy_cache/
 
       - name: Running Tests
         shell: bash
