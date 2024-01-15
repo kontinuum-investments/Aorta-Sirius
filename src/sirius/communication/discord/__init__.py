@@ -420,7 +420,7 @@ class Message(DataClass):
                 username=message.author.name,
                 is_bot=message.author.bot
             ),
-            reference=Message.get(message.reference.resolved) if message.reference.resolved is not None else None
+            reference=Message.get(message.reference.resolved) if message.reference.resolved is not None else None  # type: ignore[arg-type]
         )
 
 

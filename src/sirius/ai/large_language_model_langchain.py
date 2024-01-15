@@ -27,7 +27,7 @@ class Assistant(DataClass):
         self.message_list.append(HumanMessage(content=question))
         ai_message: AIMessage = self.llm(self.message_list)
         self.message_list.append(ai_message)
-        return ai_message.content
+        return ai_message.content  # type: ignore[return-value]
 
     @staticmethod
     def get(large_language_model: LargeLanguageModel, temperature: float = 0.2, prompt_template: str = "") -> "Assistant":
