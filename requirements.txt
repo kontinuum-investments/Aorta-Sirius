@@ -22,3 +22,4 @@ genson
 langchain
 langchain-openai
 discord
+pymongo
