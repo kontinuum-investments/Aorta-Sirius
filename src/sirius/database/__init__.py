@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 from typing import Union, cast, List, Dict, Any
 
 import motor
@@ -11,11 +12,13 @@ from pymongo.database import Database
 from sirius import common
 from sirius.common import DataClass
 from sirius.constants import EnvironmentSecret
+from sirius.exceptions import SDKClientException
 
 client: AsyncIOMotorClient | None = None  # type: ignore[valid-type]
 db: AsyncIOMotorDatabase | None = None  # type: ignore[valid-type]
 client_sync: MongoClient | None = None
 db_sync: Database | None = None
+configuration_cache: Dict[str, Any] = {}
 
 
 async def initialize() -> None:
@@ -117,5 +120,52 @@ class DatabaseDocument(DataClass):
     @classmethod
     def find_by_query_sync(cls, database_document: "DatabaseDocument", query_limit: int = 100) -> List["DatabaseDocument"]:
         collection: Collection = cls._get_collection_sync()
-        cursor = collection.find(database_document.model_dump(exclude={"id"}, exclude_none=True))
+        cursor = collection.find(database_document.model_dump(exclude={"id"}, exclude_none=True)).limit(query_limit)
         return [cls.get_model_by_raw_data(document) for document in cursor]
+
+
+class Configuration(DatabaseDocument):
+    type: str
+    key: str
+    value: str
+
+    @classmethod
+    def find_by_query_sync(cls, configuration: "Configuration", query_limit: int = 100) -> List["Configuration"]:  # type: ignore[override]
+        global configuration_cache
+        if configuration.type in configuration_cache and configuration.key in configuration_cache[configuration.type]:
+            return configuration_cache[configuration.type][configuration.key]
+
+        configuration_list: List[Configuration] = cast(List[Configuration], super().find_by_query_sync(configuration, query_limit))
+
+        if len(configuration_list) > 1:
+            raise SDKClientException(f"Duplicate configurations:\n"
+                                     f"Type: {configuration.type}\n"
+                                     f"Key: {configuration.key}")
+        elif len(configuration_list) == 1:
+            existing_configuration: Configuration = configuration_list[0]
+
+            if existing_configuration.type in configuration_cache:
+                configuration_cache[existing_configuration.type][existing_configuration.key] = existing_configuration.value
+            else:
+                configuration_cache[existing_configuration.type] = {existing_configuration.key: existing_configuration.value}
+
+        return configuration_list
+
+
+class ConfigurationEnum(Enum):
+    default_value: Any
+
+    def __init__(self, default_value: Any):
+        self.default_value = default_value
+        super().__init__()
+
+    @property
+    def value(self) -> Any:
+        existing_configuration_list: List[Configuration] = cast(List[Configuration], Configuration.find_by_query_sync(Configuration.model_construct(type=self.__class__.__name__, key=self.name)))
+
+        if len(existing_configuration_list) != 0:
+            return existing_configuration_list[0].value
+        else:
+            Configuration(type=self.__class__.__name__, key=self.name, value=self.default_value).save_sync()
+            # asyncio.ensure_future(Configuration(type=self.__class__.__name__, key=self.name, value=self.default_value).save())
+            return self.default_value
