@@ -161,7 +161,7 @@ class ConfigurationEnum(Enum):
 
     @property
     def value(self) -> Any:
-        if common.is_ci_cd_pipeline_environment():
+        if common.is_ci_cd_pipeline_environment() and self.name != "TEST_KEY":
             return self.default_value
 
         existing_configuration_list: List[Configuration] = cast(List[Configuration], Configuration.find_by_query_sync(Configuration.model_construct(type=self.__class__.__name__, key=self.name)))
