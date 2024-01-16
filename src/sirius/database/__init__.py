@@ -133,7 +133,7 @@ class Configuration(DatabaseDocument):
     def find_by_query_sync(cls, configuration: "Configuration", query_limit: int = 100) -> List["Configuration"]:  # type: ignore[override]
         global configuration_cache
         if configuration.type in configuration_cache and configuration.key in configuration_cache[configuration.type]:
-            return configuration_cache[configuration.type][configuration.key]
+            return [Configuration(type=configuration.type, key=configuration.key, value=configuration_cache[configuration.type][configuration.key])]
 
         configuration_list: List[Configuration] = cast(List[Configuration], super().find_by_query_sync(configuration, query_limit))
 
@@ -161,6 +161,9 @@ class ConfigurationEnum(Enum):
 
     @property
     def value(self) -> Any:
+        if common.is_ci_cd_pipeline_environment():
+            return self.default_value
+
         existing_configuration_list: List[Configuration] = cast(List[Configuration], Configuration.find_by_query_sync(Configuration.model_construct(type=self.__class__.__name__, key=self.name)))
 
         if len(existing_configuration_list) != 0:

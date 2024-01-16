@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import time
-from enum import Enum
 from http import HTTPStatus
 from logging import Logger
 from typing import List, Dict, Any, Union, Optional
@@ -14,6 +13,7 @@ from sirius.common import DataClass
 from sirius.communication.discord import constants
 from sirius.communication.discord.exceptions import ServerNotFoundException, DuplicateServersFoundException, RoleNotFoundException
 from sirius.constants import EnvironmentSecret
+from sirius.database import ConfigurationEnum
 from sirius.exceptions import OperationNotSupportedException
 from sirius.http_requests import AsyncHTTPSession, HTTPResponse, ClientSideException
 
@@ -21,19 +21,19 @@ logger: Logger = application_performance_monitoring.get_logger()
 default_bot: Union["Bot", None] = None
 
 
-class ServerName(Enum):
+class ServerName(ConfigurationEnum):
     VITA: str = "Vita"
     AURUM: str = "Aurum"
     AORTA: str = "Aorta"
 
 
-class AortaTextChannels(Enum):
+class AortaTextChannels(ConfigurationEnum):
     DEBUG: str = "logs"
     NOTIFICATION: str = "notification"
     WISE: str = "wise"
 
 
-class RoleType(Enum):
+class RoleType(ConfigurationEnum):
     EVERYONE: str = "@everyone"
     BOT: str = "Bot"
     OTHER: str = ""

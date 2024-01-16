@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from enum import Enum
 from typing import List, Callable, Dict, Any
 
 from sirius.common import DataClass
+from sirius.database import ConfigurationEnum
 from sirius.exceptions import OperationNotSupportedException
 
 
-class LargeLanguageModel(Enum):
+class LargeLanguageModel(ConfigurationEnum):
     GPT35_TURBO: str = "gpt-3.5-turbo"
     GPT35_TURBO_16K: str = "gpt-3.5-turbo-16k"
     GPT4: str = "gpt-4"

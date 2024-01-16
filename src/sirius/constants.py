@@ -1,7 +1,7 @@
-from enum import Enum
+from sirius.database import ConfigurationEnum
 
 
-class EnvironmentVariable(Enum):
+class EnvironmentVariable(ConfigurationEnum):
     ENVIRONMENT: str = "ENVIRONMENT"
     AZURE_KEY_VAULT_URL: str = "AZURE_KEY_VAULT_URL"
     AZURE_CLIENT_ID: str = "AZURE_CLIENT_ID"
@@ -9,7 +9,7 @@ class EnvironmentVariable(Enum):
     AZURE_TENANT_ID: str = "AZURE_TENANT_ID"
 
 
-class EnvironmentSecret(Enum):
+class EnvironmentSecret(ConfigurationEnum):
     APPLICATION_NAME: str = "APPLICATION-NAME"
     SENTRY_URL: str = "SENTRY-URL"
     MONGO_DB_CONNECTION_STRING: str = "MONGO-DB-CONNECTION-STRING"

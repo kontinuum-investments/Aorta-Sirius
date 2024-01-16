@@ -1,4 +1,3 @@
-from enum import Enum
 from typing import List
 
 from langchain_core.language_models import BaseChatModel
@@ -8,9 +7,10 @@ from langchain_openai import ChatOpenAI
 from sirius import common
 from sirius.common import DataClass
 from sirius.constants import EnvironmentSecret
+from sirius.database import ConfigurationEnum
 
 
-class LargeLanguageModel(Enum):
+class LargeLanguageModel(ConfigurationEnum):
     GPT35_TURBO: str = "gpt-3.5-turbo"
     GPT35_TURBO_16K: str = "gpt-3.5-turbo-16k"
     GPT4: str = "gpt-4"

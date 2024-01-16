@@ -11,6 +11,7 @@ from sirius.common import DataClass, Currency
 from sirius.communication.discord import AortaTextChannels, get_timestamp_string, \
     DiscordDefaults
 from sirius.constants import EnvironmentSecret
+from sirius.database import ConfigurationEnum
 from sirius.exceptions import OperationNotSupportedException, SDKClientException
 from sirius.http_requests import SyncHTTPSession, HTTPResponse
 from sirius.http_requests.exceptions import HTTPException
@@ -24,7 +25,7 @@ class WiseAccountType(Enum):
     SECONDARY = auto()
 
 
-class TransactionType(Enum):
+class TransactionType(ConfigurationEnum):
     CARD: str = "CARD"
     CONVERSION: str = "CONVERSION"
     DEPOSIT: str = "DEPOSIT"
@@ -33,7 +34,7 @@ class TransactionType(Enum):
     UNKNOWN: str = "UNKNOWN"
 
 
-class WebhookAccountUpdateType(Enum):
+class WebhookAccountUpdateType(ConfigurationEnum):
     CREDIT: str = "balances#credit"
     UPDATE: str = "balances#update"
     STATE_CHANGE: str = "balances#account-state-change"

@@ -1,7 +1,5 @@
-import asyncio
 import base64
 import datetime
-import inspect
 import io
 import multiprocessing
 import os
@@ -22,6 +20,7 @@ from pydantic import BaseModel, ConfigDict
 from qrcode.image.pil import PilImage
 
 from sirius.constants import EnvironmentVariable, EnvironmentSecret
+from sirius.database import ConfigurationEnum
 from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
 
 
@@ -32,7 +31,7 @@ class Environment(Enum):
     CI_CD_PIPELINE: str = "CI/CD Pipeline"
 
 
-class Currency(Enum):
+class Currency(ConfigurationEnum):
     AED: str = "AED"
     AUD: str = "AUD"
     BDT: str = "BDT"
