@@ -20,7 +20,6 @@ from pydantic import BaseModel, ConfigDict
 from qrcode.image.pil import PilImage
 
 from sirius.constants import EnvironmentVariable, EnvironmentSecret
-from sirius.database import ConfigurationEnum
 from sirius.exceptions import ApplicationException, SDKClientException, OperationNotSupportedException
 
 
@@ -31,7 +30,7 @@ class Environment(Enum):
     CI_CD_PIPELINE: str = "CI/CD Pipeline"
 
 
-class Currency(ConfigurationEnum):
+class Currency(Enum):
     AED: str = "AED"
     AUD: str = "AUD"
     BDT: str = "BDT"
