@@ -145,7 +145,7 @@ class ChatGPTConversation(Conversation):
     def _validate(self, message: str, image_url: str | None = None, image_path: str | None = None) -> None:
         if image_url is not None or image_path is not None:
             if self.large_language_model != LargeLanguageModel.GPT4_VISION and self.large_language_model != LargeLanguageModel.GPT4_TURBO_VISION:
-                raise SDKClientException(f"Only GPT-4V model can be used to analyze images")
+                raise SDKClientException(f"Only GPT-4V and GPT-4V Turbo models can be used to analyze images")
 
             elif image_url is not None and image_path is None:
                 self.context_list.append(ChatGPTContext.get_image_from_url_context(message, image_url))

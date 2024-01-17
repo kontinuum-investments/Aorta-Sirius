@@ -32,6 +32,11 @@ class Context(DataClass, ABC):
 
     @staticmethod
     @abstractmethod
+    def get_system_context(message: str) -> "Context":
+        pass
+
+    @staticmethod
+    @abstractmethod
     def get_user_context(message: str) -> "Context":
         pass
 
@@ -62,15 +67,17 @@ class Conversation(DataClass, ABC):
     max_tokens: int | None = None
 
     @staticmethod
-    def get_conversation(large_language_model: LargeLanguageModel,
-                         temperature: float | None = 0.2,
-                         context_list: List[Context] | None = None,
-                         function_list: List[Function] | None = None) -> "Conversation":
+    def get_new_conversation(large_language_model: LargeLanguageModel,
+                             temperature: float | None = 0.2,
+                             context_list: List[Context] | None = None,
+                             function_list: List[Function] | None = None,
+                             prompt_template: str = "You are a helpful assistant") -> "Conversation":
         context_list = [] if context_list is None else context_list
         function_list = [] if function_list is None else function_list
 
         if large_language_model in open_ai_large_language_model_list:
-            from sirius.ai.open_ai import ChatGPTConversation
+            from sirius.ai.open_ai import ChatGPTConversation, ChatGPTContext
+            context_list.append(ChatGPTContext.get_system_context(prompt_template))
             return ChatGPTConversation(large_language_model=large_language_model,
                                        temperature=temperature,
                                        context_list=context_list,
