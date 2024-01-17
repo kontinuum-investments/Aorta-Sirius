@@ -5,7 +5,10 @@ import pytest
 from sirius.ai.long_term_memory import LongTermMemory, LongTermMemoryDocumentType
 
 
-# @pytest.mark.skip(reason="Chargeable")
+@pytest.mark.skip(reason="Chargeable")
+
+
+a
 @pytest.mark.asyncio
 async def test_recollect() -> None:
     long_term_memory: LongTermMemory = await LongTermMemory.remember_from_url("https://arxiv.org/pdf/2303.08774.pdf", LongTermMemoryDocumentType.PDF)

@@ -87,7 +87,6 @@ class LongTermMemory(DatabaseDocument):
         else:
             raise
 
-
     @staticmethod
     def _get_faiss(file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 500, chunk_overlap: int = 50) -> FAISS:
         text_splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
