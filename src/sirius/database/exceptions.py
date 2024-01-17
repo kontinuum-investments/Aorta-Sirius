@@ -11,3 +11,7 @@ class NonUniqueResultException(DatabaseException):
 
 class UncommittedRelationalDocumentException(DatabaseException):
     pass
+
+
+class DocumentNotFoundException(DatabaseException):
+    pass

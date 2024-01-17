@@ -2,8 +2,8 @@ from typing import List, cast
 
 import pytest
 
-from sirius import database
-from sirius.database import DatabaseDocument
+from sirius import database, common
+from sirius.database import DatabaseDocument, DatabaseFile
 
 
 class Test(DatabaseDocument):
@@ -72,3 +72,29 @@ def test_find_by_query_sync() -> None:
     assert len(query_results) != 0
 
     database.drop_collection_sync(Test.__name__)
+
+
+@pytest.mark.asyncio
+async def test_crud_file_operations() -> None:
+    data: bytes = common.get_unique_id().encode()
+    file_name: str = "test_file"
+
+    # Create
+    database_file: DatabaseFile = DatabaseFile(file_name=file_name, metadata={"Hello": "World"})
+    database_file.set_data(data)
+    await database_file.save()
+
+    # Read
+    saved_database_file: DatabaseFile = await DatabaseFile.get_minimal(file_name)
+    assert saved_database_file.id == database_file.id
+
+    # Update
+    data = common.get_unique_id().encode()
+    saved_database_file.set_data(data)
+    await saved_database_file.save()
+    updated_database_file: DatabaseFile = await DatabaseFile.get(file_name)
+    assert updated_database_file.data == data
+
+    # Delete
+    await updated_database_file.delete()
+    assert await DatabaseFile.find(file_name) is None

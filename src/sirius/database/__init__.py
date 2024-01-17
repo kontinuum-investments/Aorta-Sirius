@@ -1,10 +1,10 @@
 import datetime
 from enum import Enum
-from typing import Union, cast, List, Dict, Any
+from typing import Union, cast, List, Dict, Any, Optional
 
 import motor
 from bson import ObjectId
-from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase, AsyncIOMotorCollection, AsyncIOMotorGridFSBucket, AsyncIOMotorGridOutCursor
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
@@ -12,19 +12,22 @@ from pymongo.database import Database
 from sirius import common
 from sirius.common import DataClass
 from sirius.constants import EnvironmentSecret
+from sirius.database.exceptions import NonUniqueResultException, DocumentNotFoundException
 from sirius.exceptions import SDKClientException
 
 client: AsyncIOMotorClient | None = None  # type: ignore[valid-type]
 db: AsyncIOMotorDatabase | None = None  # type: ignore[valid-type]
 client_sync: MongoClient | None = None
 db_sync: Database | None = None
+fs: AsyncIOMotorGridFSBucket | None = None  # type: ignore[valid-type]
 configuration_cache: Dict[str, Any] = {}
 
 
 async def initialize() -> None:
-    global client, db
+    global client, db, fs
     client = motor.motor_asyncio.AsyncIOMotorClient(f"{common.get_environmental_secret(EnvironmentSecret.MONGO_DB_CONNECTION_STRING)}&retryWrites=false", uuidRepresentation="standard") if client is None else client
     db = client[common.get_environmental_secret(EnvironmentSecret.APPLICATION_NAME)] if db is None else db
+    fs = AsyncIOMotorGridFSBucket(db)
 
 
 def initialize_sync() -> None:
@@ -41,6 +44,93 @@ async def drop_collection(collection_name: str) -> None:
 def drop_collection_sync(collection_name: str) -> None:
     initialize_sync()
     db_sync.drop_collection(collection_name)
+
+
+class DatabaseFile(DataClass):
+    id: ObjectId | None = None
+    file_name: str
+    metadata: Dict[str, Any]
+    upload_date: datetime.datetime | None = None
+    local_file_path: str | None = None
+
+    @property
+    def data(self) -> bytes:
+        with open(self.local_file_path, "rb") as f:
+            return f.read()
+
+    def set_data(self, data: bytes) -> None:
+        self.id = None
+        self.upload_date = None
+        self.local_file_path = common.get_new_temp_file_path()
+        with open(self.local_file_path, "wb") as f:
+            f.write(data)
+
+    async def save(self) -> None:
+        global fs
+
+        await initialize()
+        if self.local_file_path is None:
+            raise SDKClientException("There is no file loaded to save")
+
+        existing_database_file: DatabaseFile | None = await DatabaseFile.find(self.file_name)
+        if existing_database_file is None:
+            file_id = await fs.upload_from_stream(self.file_name, self.data, metadata=self.metadata)  # type: ignore[union-attr]
+            self.id = file_id
+        else:
+            await existing_database_file.delete()
+            await fs.upload_from_stream_with_id(existing_database_file.id, self.file_name, self.data, metadata=self.metadata)  # type: ignore[union-attr]
+
+    async def delete(self) -> None:
+        global fs
+
+        await initialize()
+        await fs.delete(self.id)  # type: ignore[union-attr]
+
+    @staticmethod
+    async def get(file_name: str) -> "DatabaseFile":
+        global fs
+
+        await initialize()
+        file_path: str = common.get_new_temp_file_path()
+        database_file: DatabaseFile = await DatabaseFile.get_minimal(file_name)
+        stream = await fs.open_download_stream(database_file.id)  # type: ignore[union-attr]
+        with open(file_path, "wb") as f:
+            while True:
+                chunk: bytes = await stream.readchunk()
+                if not chunk:
+                    break
+                f.write(chunk)
+
+        database_file.local_file_path = file_path
+        return database_file
+
+    @staticmethod
+    async def get_minimal(file_name: str) -> "DatabaseFile":
+        global fs
+
+        await initialize()
+        cursor: AsyncIOMotorGridOutCursor = fs.find({"filename": file_name})  # type: ignore[valid-type,union-attr]
+        file_id_list: List[Dict[str, Any]] = await cursor.to_list(length=10)  # type: ignore[attr-defined]
+
+        if len(file_id_list) == 1:
+            file_data: Dict[str, Any] = file_id_list[0]
+            return DatabaseFile(
+                id=file_data["_id"],
+                file_name=file_data["filename"],
+                metadata=file_data["metadata"],
+                upload_date=file_data["uploadDate"]
+            )
+        elif len(file_id_list) == 0:
+            raise DocumentNotFoundException(f"No file named: {file_name}")
+        else:
+            raise NonUniqueResultException(f"More than one file with the file name: {file_name}")
+
+    @staticmethod
+    async def find(file_name: str) -> Optional["DatabaseFile"]:
+        try:
+            return await DatabaseFile.get_minimal(file_name)
+        except DocumentNotFoundException:
+            return None
 
 
 class DatabaseDocument(DataClass):
