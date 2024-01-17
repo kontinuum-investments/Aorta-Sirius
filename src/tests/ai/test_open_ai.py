@@ -15,7 +15,7 @@ async def test_normal_conversation() -> None:
     assert response is not None
 
 
-# @pytest.mark.skip(reason="Chargeable")
+@pytest.mark.skip(reason="Chargeable")
 @pytest.mark.asyncio
 async def test_picture_context() -> None:
     conversation: Conversation = Conversation.get_new_conversation(LargeLanguageModel.GPT4_TURBO_VISION)
