@@ -1,5 +1,6 @@
 import base64
 import datetime
+import hashlib
 import io
 import multiprocessing
 import os
@@ -9,6 +10,7 @@ import string
 import tempfile
 import threading
 from _decimal import Decimal
+from _hashlib import HASH
 from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
 from typing import Callable, Any, Dict, List
@@ -260,3 +262,11 @@ def get_function_documentation(function: Callable) -> Dict[str, Any]:
         function_documentation["arguments"] = {argument_name: argument_documentation}
 
     return function_documentation
+
+
+def get_sha256_hash(file_path: str) -> str:
+    sha256_hash: HASH = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()

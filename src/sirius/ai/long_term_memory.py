@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, cast
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredMarkdownLoader, TextLoader
@@ -50,29 +50,43 @@ class LongTermMemory(DatabaseDocument):
 
     @classmethod
     async def remember(cls, file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 2000, chunk_overlap: int = 200, is_delete_after: bool = True, source: str = "") -> "LongTermMemory":
-        source = file_path if source is None else source
-        file_name: str = source if source != "" else common.get_unique_id()
-        vector_index: bytes = LongTermMemory._get_faiss(file_path, document_type, chunk_size, chunk_overlap).serialize_to_bytes()
-        metadata: Dict[str, Any] = {
-            "purpose": cls.__name__,
-            "source": source,
-            "document_type": document_type.value,
-            "chunk_size": chunk_size,
-            "chunk_overlap": chunk_overlap,
-            "size": len(vector_index),
-            "file_name": file_name
-        }
-        database_file: DatabaseFile = DatabaseFile(file_name=file_name, metadata=metadata, purpose=metadata["purpose"])
-        database_file.load_data(vector_index)
+        file_name: str = common.get_sha256_hash(file_path)
+        long_term_memory: LongTermMemory | None = await LongTermMemory.find_by_file_name(file_name)
 
-        await database_file.save()
-        long_term_memory: LongTermMemory = LongTermMemory(**metadata)
-        await long_term_memory.save()
+        if long_term_memory is None:
+            vector_index: bytes = LongTermMemory._get_faiss(file_path, document_type, chunk_size, chunk_overlap).serialize_to_bytes()
+            metadata: Dict[str, Any] = {
+                "purpose": cls.__name__,
+                "source": "" if source is None else source,
+                "document_type": document_type.value,
+                "chunk_size": chunk_size,
+                "chunk_overlap": chunk_overlap,
+                "size": len(vector_index),
+                "file_name": file_name
+            }
+            long_term_memory = LongTermMemory(**metadata)
+            database_file: DatabaseFile = DatabaseFile(file_name=common.get_sha256_hash(file_path), metadata=metadata, purpose=metadata["purpose"])
+            database_file.load_data(vector_index)
+
+            await database_file.save()
+            await long_term_memory.save()
 
         if is_delete_after:
             common.run_in_separate_thread(os.remove, file_path)
 
         return long_term_memory
+
+    @staticmethod
+    async def find_by_file_name(file_name: str) -> Optional["LongTermMemory"]:
+        long_term_memory_list: List[LongTermMemory] = cast(List[LongTermMemory], await LongTermMemory.find_by_query(LongTermMemory.model_construct(file_name=file_name)))
+
+        if len(long_term_memory_list) == 0:
+            return None
+        elif len(long_term_memory_list) == 1:
+            return long_term_memory_list[0]
+        else:
+            raise
+
 
     @staticmethod
     def _get_faiss(file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 500, chunk_overlap: int = 50) -> FAISS:
