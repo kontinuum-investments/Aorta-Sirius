@@ -64,7 +64,7 @@ class Conversation(DataClass, ABC):
     temperature: float
     context_list: List[Context] = []
     function_list: List[Function] = []
-    max_tokens: int | None = None
+    max_tokens: int = 4096
 
     @staticmethod
     def get_new_conversation(large_language_model: LargeLanguageModel,
