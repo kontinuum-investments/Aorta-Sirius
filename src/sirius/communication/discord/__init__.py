@@ -370,7 +370,7 @@ class TextChannel(Channel):
             return
 
         url: str = constants.ENDPOINT__CHANNEL__SEND_MESSAGE.replace("$channelID", str(self.id))
-        asyncio.ensure_future(self.http_session.post(url, data={"content": message}))
+        await self.http_session.post(url, data={"content": message})
 
     async def delete(self) -> None:
         await self.http_session.delete(constants.ENDPOINT__CHANNEL__DELETE.replace("$channelID", str(self.id)))
