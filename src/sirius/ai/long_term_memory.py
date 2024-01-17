@@ -35,13 +35,21 @@ class LongTermMemory(DatabaseDocument):
         return await LongTermMemory.remember(temp_file_path, document_type, source=url)
 
     @classmethod
-    async def recollect(cls, query: str, long_term_memory: "LongTermMemory") -> List[str]:
+    async def recollect(cls, query: str, long_term_memory: "LongTermMemory", max_l2_distance: float = 0.25) -> List[str]:
+        recollection_list: List[str] = []
+        embedding: OpenAIEmbeddings = OpenAIEmbeddings(disallowed_special=(), openai_api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY))  # type: ignore[call-arg]
         database_file: DatabaseFile = await DatabaseFile.get(long_term_memory.file_name)
-        faiss: FAISS = FAISS.deserialize_from_bytes(embeddings=OpenAIEmbeddings(disallowed_special=(), openai_api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY)), serialized=database_file.data)  # type: ignore[call-arg]
-        return [result.page_content for result in faiss.similarity_search(query)]
+        faiss: FAISS = FAISS.deserialize_from_bytes(embeddings=embedding, serialized=database_file.data)
+        search_vector = await embedding.aembed_query(query)
+
+        for recollection in await faiss.asimilarity_search_with_score_by_vector(search_vector):
+            if recollection[1] < max_l2_distance:
+                recollection_list.append(recollection[0].page_content)
+
+        return recollection_list
 
     @classmethod
-    async def remember(cls, file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 500, chunk_overlap: int = 50, is_delete_after: bool = True, source: str = "") -> "LongTermMemory":
+    async def remember(cls, file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 2000, chunk_overlap: int = 200, is_delete_after: bool = True, source: str = "") -> "LongTermMemory":
         source = file_path if source is None else source
         file_name: str = source if source != "" else common.get_unique_id()
         vector_index: bytes = LongTermMemory._get_faiss(file_path, document_type, chunk_size, chunk_overlap).serialize_to_bytes()
