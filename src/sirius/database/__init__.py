@@ -1,4 +1,5 @@
 import datetime
+import json
 from enum import Enum
 from typing import Union, cast, List, Dict, Any, Optional
 
@@ -49,6 +50,7 @@ def drop_collection_sync(collection_name: str) -> None:
 class DatabaseFile(DataClass):
     id: ObjectId | None = None
     file_name: str
+    purpose: str
     metadata: Dict[str, Any]
     upload_date: datetime.datetime | None = None
     local_file_path: str | None = None
@@ -58,7 +60,7 @@ class DatabaseFile(DataClass):
         with open(self.local_file_path, "rb") as f:
             return f.read()
 
-    def set_data(self, data: bytes) -> None:
+    def load_data(self, data: bytes) -> None:
         self.id = None
         self.upload_date = None
         self.local_file_path = common.get_new_temp_file_path()
@@ -71,6 +73,8 @@ class DatabaseFile(DataClass):
         await initialize()
         if self.local_file_path is None:
             raise SDKClientException("There is no file loaded to save")
+        self.metadata = {} if self.metadata is None else self.metadata
+        self.metadata["purpose"] = self.purpose
 
         existing_database_file: DatabaseFile | None = await DatabaseFile.find(self.file_name)
         if existing_database_file is None:
@@ -118,7 +122,8 @@ class DatabaseFile(DataClass):
                 id=file_data["_id"],
                 file_name=file_data["filename"],
                 metadata=file_data["metadata"],
-                upload_date=file_data["uploadDate"]
+                upload_date=file_data["uploadDate"],
+                purpose=file_data["metadata"]["purpose"]
             )
         elif len(file_id_list) == 0:
             raise DocumentNotFoundException(f"No file named: {file_name}")
@@ -155,12 +160,12 @@ class DatabaseDocument(DataClass):
 
         if self.id is None:
             self.created_timestamp = datetime.datetime.now()
-            object_id: ObjectId = (await collection.insert_one(self.model_dump(exclude={"id"}))).inserted_id  # type: ignore[attr-defined]
+            object_id: ObjectId = (await collection.insert_one(json.loads(self.model_dump_json(exclude={"id"})))).inserted_id  # type: ignore[attr-defined]
             self.__dict__.update(self.model_dump(exclude={"id"}))
             self.id = object_id
         else:
             self.updated_timestamp = datetime.datetime.now()
-            await collection.replace_one({"_id": self.id}, self.model_dump(exclude={"id"}))  # type: ignore[attr-defined]
+            await collection.replace_one({"_id": self.id}, json.loads(self.model_dump_json(exclude={"id"})))  # type: ignore[attr-defined]
 
     def save_sync(self) -> None:
         collection: Collection = self._get_collection_sync()

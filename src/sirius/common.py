@@ -13,6 +13,7 @@ from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
 from typing import Callable, Any, Dict, List
 
+import aiohttp
 import pytz
 import qrcode
 import requests
@@ -132,11 +133,15 @@ def get_application_name() -> str:
 
 def threaded(func: Callable) -> Callable:
     def wrapper(*args: Any, **kwargs: Any) -> threading.Thread:
-        thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
-        thread.start()
-        return thread
+        return run_in_separate_thread(func, *args, **kwargs)
 
     return wrapper
+
+
+def run_in_separate_thread(func: Callable, *args: Any, **kwargs: Any) -> threading.Thread:
+    thread: threading.Thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+    thread.start()
+    return thread
 
 
 def is_dict_include_another_dict(one_dict: Dict[Any, Any], another_dict: Dict[Any, Any]) -> bool:
@@ -176,14 +181,34 @@ def get_timestamp_from_string(timestamp_string: str, timezone_string: str | None
     return timestamp if timezone_string is None else timestamp.replace(tzinfo=pytz.timezone(timezone_string))
 
 
-def get_new_temp_file_path() -> str:
-    return tempfile.NamedTemporaryFile(delete=False).name
+def get_new_temp_file_path(dir_path: str | None = None, is_delete_on_close: bool = False) -> str:
+    dir_path = tempfile.gettempdir() if dir_path is None else dir_path
+    return tempfile.NamedTemporaryFile(dir=dir_path, delete=is_delete_on_close).name
 
 
-def download_file_from_url(url: str) -> str:
+def get_new_temp_dir_path() -> str:
+    return tempfile.mkdtemp()
+
+
+def download_file_from_url_sync(url: str) -> str:
     temp_file_path: str = get_new_temp_file_path()
     open(temp_file_path, "wb").write(requests.get(url).content)
     return temp_file_path
+
+
+async def download_file_from_url(url: str, file_path: str | None = None) -> str:
+    file_path = get_new_temp_file_path() if file_path is None else file_path
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            with open(file_path, "wb") as fd:
+                while True:
+                    chunk: bytes = await resp.content.read(1024)
+                    if not chunk:
+                        break
+                    fd.write(chunk)
+
+    return file_path
 
 
 def get_unique_id(length: int = 16) -> str:

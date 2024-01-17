@@ -80,8 +80,8 @@ async def test_crud_file_operations() -> None:
     file_name: str = "test_file"
 
     # Create
-    database_file: DatabaseFile = DatabaseFile(file_name=file_name, metadata={"Hello": "World"})
-    database_file.set_data(data)
+    database_file: DatabaseFile = DatabaseFile(file_name=file_name, metadata={"Hello": "World"}, purpose="Testing")
+    database_file.load_data(data)
     await database_file.save()
 
     # Read
@@ -90,7 +90,7 @@ async def test_crud_file_operations() -> None:
 
     # Update
     data = common.get_unique_id().encode()
-    saved_database_file.set_data(data)
+    saved_database_file.load_data(data)
     await saved_database_file.save()
     updated_database_file: DatabaseFile = await DatabaseFile.get(file_name)
     assert updated_database_file.data == data

@@ -23,3 +23,7 @@ langchain
 langchain-openai
 discord
 pymongo
+pypdf
+rapidocr-onnxruntime
+faiss-cpu
+unstructured
