@@ -26,14 +26,14 @@ configuration_cache: Dict[str, Any] = {}
 
 async def initialize() -> None:
     global client, db, fs
-    client = motor.motor_asyncio.AsyncIOMotorClient(f"{common.get_environmental_secret(EnvironmentSecret.MONGO_DB_CONNECTION_STRING)}&retryWrites=false", uuidRepresentation="standard") if client is None else client
+    client = motor.motor_asyncio.AsyncIOMotorClient(f"{common.get_environmental_secret(EnvironmentSecret.MONGO_DB_CONNECTION_STRING)}", uuidRepresentation="standard") if client is None else client
     db = client[common.get_environmental_secret(EnvironmentSecret.APPLICATION_NAME)] if db is None else db
     fs = AsyncIOMotorGridFSBucket(db)
 
 
 def initialize_sync() -> None:
     global client_sync, db_sync
-    client_sync = MongoClient(f"{common.get_environmental_secret(EnvironmentSecret.MONGO_DB_CONNECTION_STRING)}&retryWrites=false", uuidRepresentation="standard") if client_sync is None else client_sync
+    client_sync = MongoClient(f"{common.get_environmental_secret(EnvironmentSecret.MONGO_DB_CONNECTION_STRING)}", uuidRepresentation="standard") if client_sync is None else client_sync
     db_sync = client_sync[common.get_environmental_secret(EnvironmentSecret.APPLICATION_NAME)] if db_sync is None else db_sync
 
 
