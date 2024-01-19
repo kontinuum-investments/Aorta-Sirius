@@ -27,3 +27,4 @@ pypdf
 rapidocr-onnxruntime
 faiss-cpu
 unstructured
+langchainhub
