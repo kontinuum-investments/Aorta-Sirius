@@ -1,3 +1,4 @@
+import json
 import os
 from enum import Enum
 from typing import List, Dict, Any, Optional, cast, Tuple
@@ -40,13 +41,14 @@ class LongTermMemory(DatabaseDocument):
     chunk_overlap: int
     size: int
     file_name: str
+    description: str
 
-    async def recollect(self, query: str, max_l2_distance: float = 0.25) -> List[LongTermMemoryRecollection]:
+    async def recollect(self, question: str, max_l2_distance: float = 0.25) -> List[LongTermMemoryRecollection]:
         recollection_list: List[LongTermMemoryRecollection] = []
         embedding: OpenAIEmbeddings = OpenAIEmbeddings(disallowed_special=(), openai_api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY))  # type: ignore[call-arg]
         database_file: DatabaseFile = await DatabaseFile.get(self.file_name)
         faiss: FAISS = FAISS.deserialize_from_bytes(embeddings=embedding, serialized=database_file.data)
-        search_vector = await embedding.aembed_query(query)
+        search_vector = await embedding.aembed_query(question)
 
         for search_result in await faiss.asimilarity_search_with_score_by_vector(search_vector):
             long_term_memory_recollection: LongTermMemoryRecollection = LongTermMemoryRecollection.get(search_result)
@@ -55,13 +57,28 @@ class LongTermMemory(DatabaseDocument):
 
         return recollection_list
 
+    async def recollect_for_llm(self, question: str, max_l2_distance: float = 0.25) -> str:
+        recollection_list: List[LongTermMemoryRecollection] = await self.recollect(question, max_l2_distance=max_l2_distance)
+        return_data: List[Dict[str, str | float]] = []
+        for recollection in recollection_list:
+            return_data.append({"information_chunk": recollection.recollection,
+                                "accuracy_score": 1 - recollection.l2_distance})
+
+        return json.dumps(return_data)
+
     @staticmethod
-    async def remember_from_url(url: str, document_type: LongTermMemoryDocumentType) -> "LongTermMemory":
+    async def remember_from_url(url: str, document_type: LongTermMemoryDocumentType, description: str) -> "LongTermMemory":
         temp_file_path: str = await common.download_file_from_url(url)
-        return await LongTermMemory.remember(temp_file_path, document_type, source=url)
+        return await LongTermMemory.remember(temp_file_path, document_type, description, source=url)
 
     @classmethod
-    async def remember(cls, file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 2000, chunk_overlap: int = 200, is_delete_after: bool = True, source: str = "") -> "LongTermMemory":
+    async def remember(cls, file_path: str,
+                       document_type: LongTermMemoryDocumentType,
+                       description: str,
+                       chunk_size: int = 2000,
+                       chunk_overlap: int = 200,
+                       is_delete_after: bool = True,
+                       source: str = "", ) -> "LongTermMemory":
         file_name: str = common.get_sha256_hash(file_path)
         long_term_memory: LongTermMemory | None = await LongTermMemory.find_by_file_name(file_name)
 
@@ -74,7 +91,8 @@ class LongTermMemory(DatabaseDocument):
                 "chunk_size": chunk_size,
                 "chunk_overlap": chunk_overlap,
                 "size": len(vector_index),
-                "file_name": file_name
+                "file_name": file_name,
+                "description": description
             }
             long_term_memory = LongTermMemory(**metadata)
             database_file: DatabaseFile = DatabaseFile(file_name=common.get_sha256_hash(file_path), metadata=metadata, purpose=metadata["purpose"])

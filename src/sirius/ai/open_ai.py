@@ -9,30 +9,30 @@ from openai._types import NOT_GIVEN
 from openai.types.chat.chat_completion import ChatCompletion
 
 from sirius import common
-from sirius.ai.large_language_model import LargeLanguageModel, Conversation, Context, Function
+from sirius.ai.large_language_model import LargeLanguageModel, Assistant, Context, Function
 from sirius.constants import EnvironmentSecret
 from sirius.exceptions import SDKClientException
 
 function_calling_supported_models: List[LargeLanguageModel] = [LargeLanguageModel.GPT35_TURBO, LargeLanguageModel.GPT4, LargeLanguageModel.GPT4_TURBO]
 
 
-class ChatGPTContext(Context):
+class OpenAIGPTContext(Context):
     role: str
     content: str | List[Any]
     name: str | None = None
 
     @staticmethod
     def get_system_context(message: str) -> Context:
-        return ChatGPTContext(role="system", content=message)
+        return OpenAIGPTContext(role="system", content=message)
 
     @staticmethod
     def get_user_context(message: str) -> Context:
-        return ChatGPTContext(role="user", content=message)
+        return OpenAIGPTContext(role="user", content=message)
 
     @staticmethod
     def get_image_from_url_context(message: str, image_url: str) -> Context:
-        return ChatGPTContext(role="user",
-                              content=[
+        return OpenAIGPTContext(role="user",
+                                content=[
                                   {"type": "text", "text": message},
                                   {
                                       "type": "image_url",
@@ -47,8 +47,8 @@ class ChatGPTContext(Context):
         with open(image_path, "rb") as image_file:
             base64_encoded_image: str = base64.b64encode(image_file.read()).decode("utf-8")
 
-        return ChatGPTContext(role="user",
-                              content=[
+        return OpenAIGPTContext(role="user",
+                                content=[
                                   {
                                       "type": "text",
                                       "text": message
@@ -63,28 +63,28 @@ class ChatGPTContext(Context):
 
     @staticmethod
     def get_assistant_context(message: str) -> Context:
-        return ChatGPTContext(role="assistant", content=message)
+        return OpenAIGPTContext(role="assistant", content=message)
 
     @staticmethod
     def get_function_context(function_name: str, function_response_json_string: str) -> Context:
-        return ChatGPTContext(role="function", content=function_response_json_string, name=function_name)
+        return OpenAIGPTContext(role="function", content=function_response_json_string, name=function_name)
 
 
-class ChatGPTFunction(Function):
+class OpenAIGPTFunction(Function):
 
     def __init__(self, function: Callable, **kwargs: Any):
         function_documentation: Dict[str, Any] = common.get_function_documentation(function)
         super().__init__(function=function,
                          name=common.get_unique_id(),
                          description=function_documentation["description"],
-                         parameters=ChatGPTFunction._get_parameters(function),
+                         parameters=OpenAIGPTFunction._get_parameters(function),
                          function_documentation=function_documentation,
                          **kwargs)
 
     @staticmethod
     def _get_parameters(function: Callable) -> Dict[str, Any]:
         function_documentation: Dict[str, Any] = common.get_function_documentation(function)
-        schema: Dict[str, Any] = ChatGPTFunction._get_argument_parameters(function)
+        schema: Dict[str, Any] = OpenAIGPTFunction._get_argument_parameters(function)
         for argument_name in list(schema["properties"]):
             schema["properties"][argument_name]["description"] = function_documentation["arguments"][argument_name]
 
@@ -116,7 +116,7 @@ class ChatGPTFunction(Function):
         return schema
 
 
-class ChatGPTConversation(Conversation):
+class OpenAIGPTAssistant(Assistant):
     _client: AsyncOpenAI | None = None
     completion_token_usage: int
     prompt_token_usage: int
@@ -135,23 +135,23 @@ class ChatGPTConversation(Conversation):
 
         self._client = AsyncOpenAI(api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY))
 
-    async def say(self, message: str, image_url: str | None = None, image_path: str | None = None) -> str:
-        self._validate(message, image_url, image_path)
+    async def ask(self, question: str, image_url: str | None = None, image_path: str | None = None) -> str:
+        self._validate(question, image_url, image_path)
         if image_url is None and image_path is None:
-            self.context_list.append(ChatGPTContext.get_user_context(message))
+            self.context_list.append(OpenAIGPTContext.get_user_context(question))
 
         return await self._get_response()
 
-    def _validate(self, message: str, image_url: str | None = None, image_path: str | None = None) -> None:
+    def _validate(self, question: str, image_url: str | None = None, image_path: str | None = None) -> None:
         if image_url is not None or image_path is not None:
             if self.large_language_model != LargeLanguageModel.GPT4_VISION and self.large_language_model != LargeLanguageModel.GPT4_TURBO_VISION:
                 raise SDKClientException(f"Only GPT-4V and GPT-4V Turbo models can be used to analyze images")
 
             elif image_url is not None and image_path is None:
-                self.context_list.append(ChatGPTContext.get_image_from_url_context(message, image_url))
+                self.context_list.append(OpenAIGPTContext.get_image_from_url_context(question, image_url))
 
             elif image_url is None and image_path is not None:
-                self.context_list.append(ChatGPTContext.get_image_from_path_context(message, image_path))
+                self.context_list.append(OpenAIGPTContext.get_image_from_path_context(question, image_path))
 
             else:
                 raise SDKClientException("Invalid request")
@@ -192,18 +192,18 @@ class ChatGPTConversation(Conversation):
         match finish_reason:
             case "stop":
                 response = chat_completion.choices[0].message.content
-                self.context_list.append(ChatGPTContext.get_assistant_context(response))
+                self.context_list.append(OpenAIGPTContext.get_assistant_context(response))
 
             case "tool_calls":
                 function_name: str = chat_completion.choices[0].message.tool_calls[0].function.name
                 args: Dict[str, Any] = json.loads(chat_completion.choices[0].message.tool_calls[0].function.arguments)
-                function: ChatGPTFunction = next(filter(lambda f: f.name == function_name, self.function_list))  # type: ignore[assignment]
-                function_response_json_string: str = json.dumps(function.function(**args))
+                function: OpenAIGPTFunction = next(filter(lambda f: f.name == function_name, self.function_list))  # type: ignore[assignment]
+                function_response_json_string: str = json.dumps(await function.function(**args))
 
                 response = await self._get_function_response(function, function_response_json_string)
 
         return response
 
-    async def _get_function_response(self, function: ChatGPTFunction, function_response_json_string: str) -> str:
-        self.context_list.append(ChatGPTContext.get_function_context(function.name, function_response_json_string))
+    async def _get_function_response(self, function: OpenAIGPTFunction, function_response_json_string: str) -> str:
+        self.context_list.append(OpenAIGPTContext.get_function_context(function.name, function_response_json_string))
         return await self._get_response()
