@@ -1,6 +1,6 @@
 import os
 from enum import Enum
-from typing import List, Dict, Any, Optional, cast
+from typing import List, Dict, Any, Optional, cast, Tuple
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import PyPDFLoader, UnstructuredMarkdownLoader, TextLoader
@@ -21,6 +21,18 @@ class LongTermMemoryDocumentType(Enum):
     CSV: str = "CSV"
 
 
+class LongTermMemoryRecollection(DatabaseDocument):
+    recollection: str
+    l2_distance: float
+
+    @staticmethod
+    def get(search_result: Tuple) -> "LongTermMemoryRecollection":
+        return LongTermMemoryRecollection(
+            recollection=search_result[0].page_content,
+            l2_distance=search_result[1]
+        )
+
+
 class LongTermMemory(DatabaseDocument):
     source: str
     document_type: LongTermMemoryDocumentType
@@ -29,24 +41,24 @@ class LongTermMemory(DatabaseDocument):
     size: int
     file_name: str
 
+    async def recollect(self, query: str, max_l2_distance: float = 0.25) -> List[LongTermMemoryRecollection]:
+        recollection_list: List[LongTermMemoryRecollection] = []
+        embedding: OpenAIEmbeddings = OpenAIEmbeddings(disallowed_special=(), openai_api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY))  # type: ignore[call-arg]
+        database_file: DatabaseFile = await DatabaseFile.get(self.file_name)
+        faiss: FAISS = FAISS.deserialize_from_bytes(embeddings=embedding, serialized=database_file.data)
+        search_vector = await embedding.aembed_query(query)
+
+        for search_result in await faiss.asimilarity_search_with_score_by_vector(search_vector):
+            long_term_memory_recollection: LongTermMemoryRecollection = LongTermMemoryRecollection.get(search_result)
+            if long_term_memory_recollection.l2_distance < max_l2_distance:
+                recollection_list.append(long_term_memory_recollection)
+
+        return recollection_list
+
     @staticmethod
     async def remember_from_url(url: str, document_type: LongTermMemoryDocumentType) -> "LongTermMemory":
         temp_file_path: str = await common.download_file_from_url(url)
         return await LongTermMemory.remember(temp_file_path, document_type, source=url)
-
-    @classmethod
-    async def recollect(cls, query: str, long_term_memory: "LongTermMemory", max_l2_distance: float = 0.25) -> List[str]:
-        recollection_list: List[str] = []
-        embedding: OpenAIEmbeddings = OpenAIEmbeddings(disallowed_special=(), openai_api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY))  # type: ignore[call-arg]
-        database_file: DatabaseFile = await DatabaseFile.get(long_term_memory.file_name)
-        faiss: FAISS = FAISS.deserialize_from_bytes(embeddings=embedding, serialized=database_file.data)
-        search_vector = await embedding.aembed_query(query)
-
-        for recollection in await faiss.asimilarity_search_with_score_by_vector(search_vector):
-            if recollection[1] < max_l2_distance:
-                recollection_list.append(recollection[0].page_content)
-
-        return recollection_list
 
     @classmethod
     async def remember(cls, file_path: str, document_type: LongTermMemoryDocumentType, chunk_size: int = 2000, chunk_overlap: int = 200, is_delete_after: bool = True, source: str = "") -> "LongTermMemory":
@@ -57,7 +69,7 @@ class LongTermMemory(DatabaseDocument):
             vector_index: bytes = LongTermMemory._get_faiss(file_path, document_type, chunk_size, chunk_overlap).serialize_to_bytes()
             metadata: Dict[str, Any] = {
                 "purpose": cls.__name__,
-                "source": "" if source is None else source,
+                "source": source,
                 "document_type": document_type.value,
                 "chunk_size": chunk_size,
                 "chunk_overlap": chunk_overlap,
