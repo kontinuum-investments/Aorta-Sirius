@@ -546,6 +546,7 @@ class Recipient(DataClass):
     currency: Currency
     is_self_owned: bool
     account_number: str
+    profile: Profile
     _http_session: SyncHTTPSession = PrivateAttr()
 
     @staticmethod
@@ -561,8 +562,8 @@ class Recipient(DataClass):
             account_holder_name=data["accountHolderName"],
             currency=Currency(data["currency"]),
             is_self_owned=data["ownedByCustomer"],
-            account_number=data["details"]["accountNumber"] if data["details"]["accountNumber"] is not None else
-            data["details"]["iban"],
+            account_number=data["details"]["accountNumber"] if data["details"]["accountNumber"] is not None else data["details"]["iban"],
+            profile=profile
         ) for data in raw_recipient_list]
 
 
