@@ -12,7 +12,7 @@ class LargeLanguageModel(Enum):
     GPT4: str = "gpt-4"
     GPT4_32K: str = "gpt-4-32k"
     GPT4_VISION: str = "gpt-4-vision-preview"
-    GPT4_TURBO: str = "gpt-4-1106-preview"
+    GPT4_TURBO: str = "gpt-4-turbo-preview"
     GPT4_TURBO_VISION: str = "gpt-4-vision-preview"
 
 
