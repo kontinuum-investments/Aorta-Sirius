@@ -7,7 +7,7 @@ from sirius.ai.large_language_model import Conversation, LargeLanguageModel
 from sirius.ai.open_ai import ChatGPTFunction
 
 
-# @pytest.mark.skip(reason="Chargeable")
+@pytest.mark.skip(reason="Chargeable")
 @pytest.mark.asyncio
 async def test_normal_conversation() -> None:
     conversation: Conversation = Conversation.get_conversation(LargeLanguageModel.GPT35_TURBO)
