@@ -61,6 +61,10 @@ class Conversation(DataClass, ABC):
     function_list: List[Function] = []
     max_tokens: int | None = None
 
+    @abstractmethod
+    def add_system_prompt(self, system_prompt: str) -> None:
+        pass
+
     @staticmethod
     def get_conversation(large_language_model: LargeLanguageModel,
                          temperature: float | None = 0.2,

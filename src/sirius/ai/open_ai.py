@@ -135,6 +135,10 @@ class ChatGPTConversation(Conversation):
 
         self._client = AsyncOpenAI(api_key=common.get_environmental_secret(EnvironmentSecret.OPEN_AI_API_KEY))
 
+    def add_system_prompt(self, system_prompt: str) -> None:
+        self.context_list.append(ChatGPTContext.get_system_context(system_prompt))
+
+
     async def say(self, message: str, image_url: str | None = None, image_path: str | None = None) -> str:
         self._validate(message, image_url, image_path)
         if image_url is None and image_path is None:
