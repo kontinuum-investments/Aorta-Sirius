@@ -1,7 +1,5 @@
-import asyncio
 import base64
 import datetime
-import inspect
 import io
 import multiprocessing
 import os
@@ -234,6 +232,6 @@ def get_function_documentation(function: Callable) -> Dict[str, Any]:
         if argument_name not in function.__annotations__ or not any(argument_name == a for a in list(function.__annotations__)):
             raise SDKClientException(f"Invalid documentation for the function {function.__name__}")
 
-        function_documentation["arguments"] = {argument_name: argument_documentation}
+        function_documentation["arguments"][argument_name] = argument_documentation
 
     return function_documentation
