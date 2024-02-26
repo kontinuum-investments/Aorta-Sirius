@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from enum import Enum
 from typing import List, Callable, Dict, Any
 
@@ -60,6 +61,8 @@ class Conversation(DataClass, ABC):
     context_list: List[Context] = []
     function_list: List[Function] = []
     max_tokens: int | None = None
+    total_token_usage: int
+    total_cost: Decimal = Decimal("0")
 
     @abstractmethod
     def add_system_prompt(self, system_prompt: str) -> None:

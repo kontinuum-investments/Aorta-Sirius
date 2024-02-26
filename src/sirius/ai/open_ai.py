@@ -1,7 +1,8 @@
 import base64
 import datetime
 import json
-from typing import Dict, List, Any, Callable
+from decimal import Decimal
+from typing import Dict, List, Any, Callable, Tuple
 
 from genson import SchemaBuilder
 from openai import AsyncOpenAI
@@ -120,7 +121,6 @@ class ChatGPTConversation(Conversation):
     _client: AsyncOpenAI | None = None
     completion_token_usage: int
     prompt_token_usage: int
-    total_token_usage: int
     chat_completion_list: List[ChatCompletion] = []
 
     def __init__(self, **kwargs: Any) -> None:
@@ -137,7 +137,6 @@ class ChatGPTConversation(Conversation):
 
     def add_system_prompt(self, system_prompt: str) -> None:
         self.context_list.append(ChatGPTContext.get_system_context(system_prompt))
-
 
     async def say(self, message: str, image_url: str | None = None, image_path: str | None = None) -> str:
         self._validate(message, image_url, image_path)
@@ -206,8 +205,24 @@ class ChatGPTConversation(Conversation):
 
                 response = await self._get_function_response(function, function_response_json_string)
 
+        prompt_token_price, completion_token_price = self.get_pricing()
+        self.total_cost = self.total_cost + (prompt_token_price * Decimal(self.prompt_token_usage)) + (completion_token_price * Decimal(self.completion_token_usage))
         return response
 
     async def _get_function_response(self, function: ChatGPTFunction, function_response_json_string: str) -> str:
         self.context_list.append(ChatGPTContext.get_function_context(function.name, function_response_json_string))
         return await self._get_response()
+
+    def get_pricing(self) -> Tuple[Decimal, Decimal]:
+        if self.large_language_model == LargeLanguageModel.GPT4_TURBO:
+            return Decimal("0.00001"), Decimal("0.00003")
+        elif self.large_language_model == LargeLanguageModel.GPT4:
+            return Decimal("0.00003"), Decimal("0.00006")
+        elif self.large_language_model == LargeLanguageModel.GPT4_32K:
+            return Decimal("0.00006"), Decimal("0.00012")
+        elif self.large_language_model == LargeLanguageModel.GPT35_TURBO_16K:
+            return Decimal("0.0000005"), Decimal("0.0000015")
+        elif self.large_language_model == LargeLanguageModel.GPT35_TURBO:
+            return Decimal("0.0000015"), Decimal("0.0000020")
+
+        raise SDKClientException("Invalid large language model")
